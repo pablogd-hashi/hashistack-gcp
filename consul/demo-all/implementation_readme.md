@@ -487,7 +487,6 @@ port = 8558
 consul {
   address = "<your-dc1-server-ip>:8500"  # Direct connection to GCP Consul server
   token = "<your-bootstrap-token>"       # Your bootstrap token
-  partition = "k8s-southwest1"
 }
 
 driver "terraform" {
@@ -500,7 +499,13 @@ task {
   description = "Update load balancer when production intentions change for minimal boutique"
   enabled = true
   
-  services = ["frontend", "productcatalogservice", "cartservice", "currencyservice", "redis-cart"]
+  services = [
+    "frontend.production.k8s-southwest1",
+    "productcatalogservice.production.k8s-southwest1", 
+    "cartservice.production.k8s-southwest1",
+    "currencyservice.production.k8s-southwest1",
+    "redis-cart.production.k8s-southwest1"
+  ]
   
   module = "/path/to/terraform-loadbalancer-module"
   
