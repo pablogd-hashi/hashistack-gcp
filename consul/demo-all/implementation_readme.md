@@ -582,7 +582,7 @@ output "infrastructure_updates" {
 EOF
 
 # Update the module path if using local demo module
-sed -i 's|findkim/print/cts|./demo-module|g' consul-terraform-sync.hcl
+sed -i '' 's|findkim/print/cts|./demo-module|g' consul-terraform-sync.hcl
 
 # Start CTS (background process for demo) - connects directly to GCP
 consul-terraform-sync start -config-file=consul-terraform-sync.hcl &
