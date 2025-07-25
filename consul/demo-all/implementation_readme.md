@@ -472,14 +472,15 @@ unzip cts.zip
 sudo mv consul-terraform-sync /usr/local/bin/
 ```
 
-**CTS Configuration with HCP Terraform Integration:**
+**CTS Configuration with Hybrid HCP Terraform Integration:**
 ```bash
 # Set your GCP Consul server details
 export CONSUL_SERVER_IP="<your-dc1-server-ip>"  # Your DC1 server IP
 export CONSUL_HTTP_ADDR="http://$CONSUL_SERVER_IP:8500"
 export CONSUL_HTTP_TOKEN="<your-bootstrap-token>"  # Your bootstrap token
 
-# CTS configuration for k8s-southwest1 partition with HCP Terraform integration
+# CTS configuration for k8s-southwest1 partition with hybrid HCP Terraform integration
+# Note: CTS runs locally but generates Terraform config for your HCP workspace
 cat > consul-terraform-sync.hcl << 'EOF'
 log_level = "INFO"
 port = 8558
@@ -493,23 +494,16 @@ driver "terraform" {
   log = true
   path = "/tmp/cts-terraform"
   
-  # HCP Terraform Cloud integration - use existing GKE Southwest workspace
-  backend "remote" {
-    hostname     = "app.terraform.io"
-    organization = "pablogd-hcp-test"  # Your HCP Terraform org
-    
-    workspaces {
-      name = "GKE-southwest"  # Use your existing GKE Southwest workspace
-    }
-  }
-  
-  # Required for HCP Terraform
+  # For local execution - CTS doesn't support remote backend directly
   required_providers {
     consul = {
       source = "hashicorp/consul"
     }
     google = {
       source = "hashicorp/google"
+    }
+    local = {
+      source = "hashicorp/local"
     }
   }
 }
@@ -695,7 +689,7 @@ curl -s http://localhost:8558/v1/status | jq '.status' && echo "✅ CTS running 
 - **HCP Terraform Integration**: CTS will execute Terraform runs in your existing `GKE-southwest` workspace
 - **Infrastructure Integration**: Module references your existing GKE cluster and network infrastructure
 
-**Demonstrating CTS Infrastructure Automation with HCP Terraform:**
+**Demonstrating CTS Infrastructure Automation with Hybrid HCP Terraform Integration:**
 
 ```bash
 # 1. Check initial CTS task status
@@ -705,15 +699,15 @@ curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0].status'
 kubectl scale deployment frontend --replicas=3 -n production
 kubectl scale deployment productcatalogservice --replicas=2 -n production
 
-# 3. Wait for CTS to detect changes and trigger HCP Terraform run
-sleep 60  # HCP Terraform runs take longer than local execution
+# 3. Wait for CTS to detect changes and generate new Terraform config
+sleep 30
 
-# 4. Check that CTS executed Terraform in your HCP workspace
+# 4. Check that CTS executed Terraform locally
 curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0]'
 
-# 5. Check HCP Terraform workspace for the actual run
-echo "🚀 Check your HCP Terraform workspace 'GKE-southwest' for the triggered run"
-echo "https://app.terraform.io/app/pablogd-hcp-test/workspaces/GKE-southwest"
+# 5. View the generated Terraform configuration for HCP integration
+cat /tmp/cts-generated-config.tf
+echo "📋 This config can be copied to your GKE-southwest workspace"
 
 # 6. View the infrastructure monitoring file that was created
 cat /tmp/gke-southwest-services.json | jq '.'  # GKE service integration status
@@ -722,18 +716,27 @@ cat /tmp/gke-southwest-services.json | jq '.'  # GKE service integration status
 consul kv get cts/gke-southwest/infrastructure/firewall_rules | jq '.'
 consul kv get cts/gke-southwest/services/current_state | jq '.'
 
-# 8. Scale back and watch CTS trigger another HCP Terraform run
+# 8. Apply the generated config to your HCP Terraform workspace (manual step)
+echo "🚀 To integrate with HCP Terraform:"
+echo "1. Copy content from /tmp/cts-generated-config.tf"
+echo "2. Add it to your GKE-southwest workspace repository"
+echo "3. Commit and push to trigger HCP Terraform run"
+echo "4. Monitor at: https://app.terraform.io/app/pablogd-hcp-test/workspaces/GKE-southwest"
+
+# 9. Scale back and watch CTS generate updated config
 kubectl scale deployment frontend --replicas=1 -n production
-sleep 60
-curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0].status'
+sleep 30
+echo "Updated configuration:"
+cat /tmp/cts-generated-config.tf | grep -A 5 "services_discovered"
 ```
 
 **What This Demonstrates:**
-- **HCP Terraform Integration**: CTS triggers actual Terraform runs in your existing workspace
-- **Real Infrastructure Updates**: Firewall rules are created/updated in your GKE Southwest cluster
+- **Hybrid Integration**: CTS runs locally but generates HCP Terraform-compatible configurations
+- **Real Infrastructure Automation**: Firewall rules and monitoring configs generated based on service discovery
 - **Service Discovery Integration**: CTS monitors Consul service registry in k8s-southwest1 partition  
 - **Infrastructure Audit Trail**: Consul KV stores detailed infrastructure change history
-- **Enterprise-Grade Automation**: Uses your existing HCP Terraform workflows and permissions
+- **HCP Terraform Compatibility**: Generated configs use your existing workspace structure
+- **GitOps Workflow**: Generated configs can be committed to trigger HCP Terraform runs
 
 ## Step 5: Promote to Production
 

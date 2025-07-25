@@ -9,20 +9,13 @@ driver "terraform" {
   log = true
   path = "/tmp/cts-terraform"
   
-  # HCP Terraform Cloud integration - use existing infrastructure workspace
-  backend "remote" {
-    hostname     = "app.terraform.io"
-    organization = "pablogd-hcp-test"  # Your HCP Terraform org
-    
-    workspaces {
-      name = "GKE-southwest"  # Use your existing GKE Southwest workspace
-    }
-  }
-  
-  # Required for HCP Terraform
+  # For local execution - CTS doesn't support remote backend directly
   required_providers {
     consul = {
       source = "hashicorp/consul"
+    }
+    google = {
+      source = "hashicorp/google"
     }
     local = {
       source = "hashicorp/local" 
