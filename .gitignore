@@ -1,0 +1,281 @@
+# ============================================================================
+# HASHISTACK GCP PROJECT - COMPREHENSIVE .GITIGNORE
+# ============================================================================
+
+# ============================================================================
+# TERRAFORM SENSITIVE FILES
+# ============================================================================
+
+# Terraform state files (contain sensitive infrastructure data)
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfstate.*.backup
+**/terraform.tfplan
+**/terraform.tfplan.*
+
+# Terraform variable files (often contain secrets, API keys, etc.)
+**/terraform.tfvars
+**/terraform.auto.tfvars
+**/*.tfvars
+**/.terraform.tfvars
+**/secrets.tfvars
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+
+# Terraform crash logs
+**/crash.log
+**/crash.*.log
+
+# ============================================================================
+# CERTIFICATES AND KEYS (CRITICAL SECURITY)
+# ============================================================================
+
+# SSL/TLS certificates and private keys
+**/*.pem
+**/*.key
+**/*.crt
+**/*.cer
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+
+# SSH keys
+**/id_rsa*
+**/id_ed25519*
+**/id_ecdsa*
+**/id_dsa*
+**/*.pub
+**/authorized_keys
+**/known_hosts
+
+# Consul and Nomad certificates
+**/consul-agent-ca*.pem
+**/consul-agent-ca*.key
+**/nomad-agent-ca*.pem
+**/nomad-agent-ca*.key
+**/consul-ca*.pem
+**/consul-ca*.key
+
+# ============================================================================
+# SECRETS AND TOKENS
+# ============================================================================
+
+# HashiCorp tokens and secrets
+**/*-token
+**/*-token.txt
+**/*.token
+**/bootstrap-token*
+**/gossip-key*
+**/encryption-key*
+
+# License files
+**/*.lic
+**/*.license
+**/license.txt
+
+# API keys and credentials
+**/api-key*
+**/credentials*
+**/service-account*.json
+**/client-secret*
+
+# ============================================================================
+# ENVIRONMENT AND CONFIGURATION FILES
+# ============================================================================
+
+# Environment variables files
+**/.env
+**/.env.*
+**/.envrc
+**/env.sh
+**/secrets.sh
+
+# Consul and Nomad data directories
+**/consul.d/
+**/nomad.d/
+**/data/
+**/logs/
+
+# Configuration backups that might contain secrets
+**/values.yaml.backup
+**/config.yaml.backup
+**/*.backup
+**/*.bak
+
+# ============================================================================
+# KUBERNETES SENSITIVE FILES
+# ============================================================================
+
+# Helm values files with secrets
+**/values-secrets.yaml
+**/secrets.yaml
+**/secret-values.yaml
+
+# Kubernetes config files
+**/.kube/
+**/kubeconfig*
+**/*kubeconfig*
+
+# ============================================================================
+# PACKER BUILD ARTIFACTS
+# ============================================================================
+
+# Packer build outputs
+**/packer_cache/
+**/manifest*.json
+**/*.pkrvars.hcl
+!**/common.pkrvars.hcl  # Allow common non-secret packer vars
+
+# ============================================================================
+# GENERATED AND RUNTIME FILES
+# ============================================================================
+
+# Auto-generated scripts that might contain secrets
+**/setup-secrets*.sh
+**/create-secrets*.sh
+**/deploy-secrets*.sh
+
+# Runtime generated files
+**/generated/
+**/tmp/
+**/temp/
+**/.tmp/
+
+# Logs that might contain sensitive information
+**/*.log
+**/logs/
+**/log/
+
+# ============================================================================
+# IDE AND DEVELOPMENT TOOLS
+# ============================================================================
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ============================================================================
+# VERSION CONTROL AND BUILD ARTIFACTS
+# ============================================================================
+
+# Git files
+.git/
+.gitconfig
+.gitignore_global
+
+# Build artifacts
+**/dist/
+**/build/
+**/target/
+**/.build/
+
+# ============================================================================
+# CLOUD PROVIDER SPECIFIC
+# ============================================================================
+
+# GCP service account keys
+**/gcp-key*.json
+**/service-account*.json
+**/google-application-credentials*.json
+
+# AWS credentials
+**/.aws/
+**/aws-credentials*
+
+# Azure credentials
+**/.azure/
+
+# ============================================================================
+# MONITORING AND OBSERVABILITY
+# ============================================================================
+
+# Grafana data
+**/grafana/data/
+**/grafana.db
+
+# Prometheus data
+**/prometheus/data/
+
+# ============================================================================
+# DOCUMENTATION AND PROJECT MANAGEMENT
+# ============================================================================
+
+# Temporary documentation files
+**/TODO.md
+**/NOTES.md
+**/SCRATCH.md
+**/.notes/
+
+# ============================================================================
+# CUSTOM PROJECT EXCLUSIONS
+# ============================================================================
+
+# Cluster-specific generated files
+**/cluster-info.json
+**/deployment-status.json
+
+# Scripts that might be auto-generated with secrets
+**/auto-setup-*.sh
+**/generated-*.sh
+
+# Backup files that might contain sensitive data
+**/*-backup.*
+**/*.orig
+
+# Test files that might contain real credentials
+**/test-credentials*
+**/test-secrets*
+
+# ============================================================================
+# ALLOW EXCEPTIONS (important files to keep)
+# ============================================================================
+
+# Important: Explicitly allow certain files that should be tracked
+!README.md
+!CHANGELOG.md
+!LICENSE
+!Makefile
+!Dockerfile
+!docker-compose.yml
+!Taskfile.yml
+!.github/
+
+# Allow template files (they should not contain real secrets)
+!**/template/*.tpl
+!**/templates/*.yaml
+!**/examples/*.yaml
+
+# Allow documentation scripts (should not contain secrets)
+!**/docs/**/*.sh
+
+# ============================================================================
+# NOTES FOR DEVELOPERS
+# ============================================================================
+
+# This .gitignore is designed to prevent accidental commit of:
+# 1. Terraform state and variable files with infrastructure secrets
+# 2. SSL/TLS certificates and private keys
+# 3. HashiCorp service tokens and API keys
+# 4. Cloud provider credentials and service account keys
+# 5. Kubernetes configuration files with cluster access
+# 6. Environment files with sensitive variables
+# 7. Generated files that might contain secrets
+# 8. IDE and system files that could leak information
+#
+# Always review files before committing and never commit real secrets!
+# Use environment variables, secret management systems, or encrypted storage.
