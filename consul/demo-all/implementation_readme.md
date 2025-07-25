@@ -518,10 +518,10 @@ task {
 }
 EOF
 
-# Optional: Create a simple demo module for testing (if you want to see actual Terraform execution)
+# Create a realistic demo module that simulates infrastructure updates
 mkdir -p demo-module
 cat > demo-module/main.tf << 'EOF'
-# Simple demo module that prints service information
+# Demo: Simulate updating load balancer configuration based on Consul services
 variable "services" {
   description = "Services monitored by CTS"
   type        = map(object({
@@ -529,16 +529,54 @@ variable "services" {
     name    = string
     address = string
     port    = number
+    tags    = list(string)
   }))
 }
 
-output "monitored_services" {
-  value = {
-    for name, service in var.services : name => {
-      name    = service.name
-      address = service.address
-      port    = service.port
+# Simulate creating/updating load balancer target groups
+resource "local_file" "load_balancer_config" {
+  filename = "/tmp/load-balancer-config.json"
+  content = jsonencode({
+    timestamp = timestamp()
+    services = {
+      for name, service in var.services : name => {
+        name    = service.name
+        address = service.address
+        port    = service.port
+        tags    = service.tags
+        target_group = "tg-${replace(service.name, ".", "-")}"
+        health_check = "http://${service.address}:${service.port}/health"
+      }
     }
+    total_services = length(var.services)
+    frontend_replicas = length([for s in var.services : s if contains(split(".", s.name), "frontend")])
+  })
+}
+
+# Simulate updating monitoring configuration
+resource "local_file" "monitoring_config" {
+  filename = "/tmp/prometheus-targets.yml"
+  content = yamlencode({
+    targets = [
+      for name, service in var.services : "${service.address}:${service.port}"
+    ]
+    labels = {
+      environment = "production"
+      partition = "k8s-southwest1"
+      managed_by = "consul-terraform-sync"
+    }
+  })
+}
+
+output "infrastructure_updates" {
+  value = {
+    load_balancer_targets = length(var.services)
+    monitoring_targets = length(var.services)
+    config_files_updated = [
+      local_file.load_balancer_config.filename,
+      local_file.monitoring_config.filename
+    ]
+    summary = "Updated infrastructure for ${length(var.services)} services in k8s-southwest1"
   }
 }
 EOF
@@ -557,6 +595,38 @@ curl -s http://localhost:8558/v1/status | jq '.status' && echo "✅ CTS running 
 - `curl http://localhost:8558/v1/status` should return JSON with status information
 - You should see "✅ CTS running locally" message
 - CTS is configured to watch the 5 minimal boutique services
+
+**Demonstrating CTS Infrastructure Automation:**
+
+```bash
+# 1. Check initial CTS task status
+curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0].status'
+
+# 2. Trigger infrastructure update by scaling services (simulates service changes)
+kubectl scale deployment frontend --replicas=3 -n production
+kubectl scale deployment productcatalogservice --replicas=2 -n production
+
+# 3. Wait a moment for CTS to detect changes and run Terraform
+sleep 30
+
+# 4. Check that CTS executed Terraform
+curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0]'
+
+# 5. View the "infrastructure" files that CTS/Terraform created
+cat /tmp/load-balancer-config.json | jq '.'  # Load balancer targets
+cat /tmp/prometheus-targets.yml              # Monitoring targets
+
+# 6. Scale back and watch CTS update infrastructure again
+kubectl scale deployment frontend --replicas=1 -n production
+sleep 30
+cat /tmp/load-balancer-config.json | jq '.frontend_replicas'  # Should show 1
+```
+
+**What This Demonstrates:**
+- **Service Discovery Integration**: CTS monitors Consul service registry
+- **Infrastructure Automation**: When services change, Terraform updates infrastructure
+- **Real-World Simulation**: Load balancer and monitoring configs updated automatically
+- **Audit Trail**: JSON files show what infrastructure changes were made and when
 
 ## Step 5: Promote to Production
 
