@@ -1,0 +1,105 @@
+# Simplified Consul Helm Values for GKE Testing
+# This connects to DC1 HashiStack cluster as an admin partition client
+
+global:
+  enabled: true
+  name: consul
+  datacenter: gcp-dc1
+  image: hashicorp/consul-enterprise:1.21.0-ent
+  imageK8S: hashicorp/consul-k8s-control-plane:1.6.2
+  logLevel: info
+  
+  # Admin Partitions Configuration - Using default partition for simplicity
+  adminPartitions:
+    enabled: true
+    name: "k8s-test"  # Using default partition to avoid auth method complexity
+  
+  # Enterprise License (you'll need to create this secret)
+  enterpriseLicense:
+    secretName: consul-ent-license
+    secretKey: key
+    
+  # TLS Configuration
+  tls:
+    enabled: true
+    enableAutoEncrypt: true
+    verify: false  # Set to false for testing, true for production
+    caCert:
+      secretName: consul-ca-cert
+      secretKey: tls.crt
+    caKey:
+      secretName: consul-ca-key  
+      secretKey: tls.key
+      
+  # ACL Configuration
+  acls:
+    manageSystemACLs: true
+    bootstrapToken:
+      secretName: consul-bootstrap-token
+      secretKey: token
+      
+  # Consul Namespaces (Enterprise feature)
+  enableConsulNamespaces: true
+  
+  # Peering Configuration (requires TLS)
+  peering:
+    enabled: true
+    
+  # Metrics
+  metrics:
+    enabled: true
+    enableGatewayMetrics: true
+
+# External Servers Configuration (your DC1 cluster)
+externalServers:
+  enabled: true
+  hosts:
+    - "<consul-server-ip-1>"
+    - "<consul-server-ip-2>" 
+    - "<consul-server-ip-3>"
+  tlsServerName: server.gcp-dc1.consul
+  k8sAuthMethodHost: https://<gke-api-endpoint>
+
+# Server Configuration (disabled since we're connecting to external)
+server:
+  enabled: false
+
+# Client Configuration
+client:
+  enabled: false  # We're using external servers
+  grpc: true
+
+# Connect Inject Configuration  
+connectInject:
+  enabled: true
+  transparentProxy:
+    defaultEnabled: true
+  consulNamespaces:
+    mirroringK8S: true
+
+# Controller
+controller:
+  enabled: true
+
+# DNS Configuration
+dns:
+  enabled: true
+  enableRedirection: true
+  proxy:
+    enabled: true
+    aclToken:
+      secretName: consul-dns-token
+      secretKey: token
+
+# Mesh Gateway (for partition communication)
+meshGateway:
+  enabled: true
+  replicas: 1
+  enableHealthChecks: false
+  service:
+    enabled: true
+    type: LoadBalancer  # Use NodePort for Minikube if LoadBalancer doesn't work
+
+# Terminating Gateways
+terminatingGateways:
+  enabled: true

@@ -1,0 +1,72 @@
+version: '3'
+
+# Consul cluster peering tasks
+tasks:
+  help:
+    desc: "Show cluster peering setup instructions"
+    silent: true
+    cmds:
+      - echo "Consul Cluster Peering Setup"
+      - echo "Prerequisites - Both clusters must be deployed"
+      - echo "task peering:env-setup - Get environment setup"
+      - echo "task peering:setup - Start peering setup"
+      - echo "task peering:establish - Establish peering connection"
+      - echo "task peering:complete - Complete setup"
+      - echo "task peering:verify - Verify peering works"
+      - echo "Detailed guide at consul/peering/README.md"
+
+  env-setup:
+    desc: "Show environment setup for cluster peering"
+    silent: true
+    cmds:
+      - echo "Set environment variables for cluster peering"
+      - echo "See consul/peering/README.md for detailed instructions"
+
+  setup:
+    desc: "Start cluster peering setup (phases 1-8)"
+    dir: consul/peering
+    cmds:
+      - task: setup-peering
+    preconditions:
+      - sh: "[ ! -z \"$DC1_CONSUL_ADDR\" ]"
+        msg: "DC1_CONSUL_ADDR not set. Run 'task peering:env-setup' for instructions"
+      - sh: "[ ! -z \"$DC2_CONSUL_ADDR\" ]"
+        msg: "DC2_CONSUL_ADDR not set. Run 'task peering:env-setup' for instructions"
+
+  establish:
+    desc: "Establish peering connection (run after setup)"
+    dir: consul/peering
+    cmds:
+      - task: establish-peering
+
+  complete:
+    desc: "Complete peering setup (phases 9-13)"
+    dir: consul/peering
+    cmds:
+      - task: complete-peering
+
+  verify:
+    desc: "Verify peering status and connectivity"
+    dir: consul/peering
+    cmds:
+      - task: verify-setup
+      - task: check-services
+
+  sameness-groups:
+    desc: "Configure sameness groups for failover"
+    dir: consul/peering
+    cmds:
+      - task: configure-sameness-groups
+
+  service-resolver:
+    desc: "Configure service resolver for failover"
+    dir: consul/peering
+    cmds:
+      - task: configure-service-resolver
+
+  cleanup:
+    desc: "Clean up peering configuration"
+    dir: consul/peering
+    cmds:
+      - task: cleanup-peering
+      - task: cleanup-jobs

@@ -1,0 +1,190 @@
+version: '3'
+
+vars:
+  DC1_DIR: "../clusters/dc1/terraform"
+  DC2_DIR: "../clusters/dc2/terraform"
+
+# Infrastructure deployment tasks for HashiCorp clusters
+tasks:
+  # === Image Building ===
+  build-images:
+    desc: "Build HashiStack images with Packer"
+    dir: "packer/gcp"
+    cmds:
+      - echo "Building HashiStack images for new project..."
+      - packer build .
+      - echo "HashiStack images built successfully"
+
+  # === Infrastructure Deployment ===
+  deploy-dc1:
+    desc: "Deploy DC1 cluster (europe-southwest1)"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - terraform init
+      - terraform apply -auto-approve
+      - echo "=== DC1 Cluster Info ==="
+      - terraform output cluster_info
+      - echo "=== DC1 URLs ==="
+      - terraform output hashistack_urls
+      - echo "=== DC1 Environment Setup ==="
+      - terraform output -json environment_setup | jq -r '.bash_export'
+
+  deploy-dc2:
+    desc: "Deploy DC2 cluster (europe-west1)"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - terraform init
+      - terraform apply -auto-approve
+      - echo "=== DC2 Cluster Info ==="
+      - terraform output cluster_info
+      - echo "=== DC2 URLs ==="
+      - terraform output hashistack_urls
+      - echo "=== DC2 Environment Setup ==="
+      - terraform output -json environment_setup | jq -r '.bash_export'
+
+  deploy-both:
+    desc: "Deploy both DC1 and DC2 clusters (sequential)"
+    cmds:
+      - task: deploy-dc1
+      - task: deploy-dc2
+      - echo "=== Both clusters deployed ==="
+      - echo "CRITICAL NEXT STEPS:"
+      - echo "1. Run 'nomad setup consul -y' on each cluster's server nodes"
+      - echo "2. Use task ssh-dc1-server and task ssh-dc2-server to connect"
+      - echo "3. Then deploy networking and monitoring"
+
+  # === Consul-Nomad Integration Setup ===
+  setup-consul-nomad-dc1:
+    desc: "Setup Consul-Nomad integration for DC1"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "Setting up Consul-Nomad integration for DC1..."
+      - |
+        SERVER_IP=$(terraform output -json server_nodes | jq -r '.hashi_servers."server-1".public_ip')
+        ssh ubuntu@$SERVER_IP 'sudo nomad setup consul -y'
+      - echo "DC1 Consul-Nomad integration complete"
+
+  setup-consul-nomad-dc2:
+    desc: "Setup Consul-Nomad integration for DC2"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "Setting up Consul-Nomad integration for DC2..."
+      - |
+        SERVER_IP=$(terraform output -json server_nodes | jq -r '.hashi_servers."server-1".public_ip')
+        ssh ubuntu@$SERVER_IP 'sudo nomad setup consul -y'
+      - echo "DC2 Consul-Nomad integration complete"
+
+  setup-consul-nomad-both:
+    desc: "Setup Consul-Nomad integration for both clusters"
+    cmds:
+      - task: setup-consul-nomad-dc1
+      - task: setup-consul-nomad-dc2
+      - echo "=== Consul-Nomad integration complete for both clusters ==="
+
+  # === Status and Information ===
+  check-infra:
+    desc: "Check deployment status of both clusters"
+    cmds:
+      - echo "Checking DC1 Infrastructure..."
+      - cd {{.DC1_DIR}} && terraform show > /dev/null 2>&1 && echo "DC1 deployed" || echo "DC1 not deployed"
+      - echo "Checking DC2 Infrastructure..."  
+      - cd {{.DC2_DIR}} && terraform show > /dev/null 2>&1 && echo "DC2 deployed" || echo "DC2 not deployed"
+
+  status-dc1:
+    desc: "Show DC1 status"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - terraform output cluster_info || echo "No cluster info available"
+
+  status-dc2:
+    desc: "Show DC2 status"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - terraform output cluster_info || echo "No cluster info available"
+
+  # === Cleanup ===
+  destroy-dc1:
+    desc: "Destroy DC1 cluster"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - terraform destroy -auto-approve
+
+  destroy-dc2:
+    desc: "Destroy DC2 cluster"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - terraform destroy -auto-approve
+
+  destroy-both:
+    desc: "Destroy both clusters"
+    cmds:
+      - task: destroy-dc1
+      - task: destroy-dc2
+
+  # === Quick Access ===
+  ssh-dc1-server:
+    desc: "SSH to DC1 server node"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - |
+        SERVER_IP=$(terraform output -json server_nodes | jq -r '.hashi_servers."server-1".public_ip')
+        echo "Connecting to DC1 server at $SERVER_IP"
+        ssh ubuntu@$SERVER_IP
+
+  ssh-dc2-server:
+    desc: "SSH to DC2 server node"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - |
+        SERVER_IP=$(terraform output -json server_nodes | jq -r '.hashi_servers."server-1".public_ip')
+        echo "Connecting to DC2 server at $SERVER_IP"
+        ssh ubuntu@$SERVER_IP
+
+  # === Environment Variables ===
+  eval-vars-dc1:
+    desc: "Show environment variables for DC1"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "# DC1 Environment Setup"
+      - terraform output -json environment_setup | jq -r '.bash_export'
+
+  eval-vars-dc2:
+    desc: "Show environment variables for DC2"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "# DC2 Environment Setup"
+      - terraform output -json environment_setup | jq -r '.bash_export'
+
+  eval-vars:
+    desc: "Show environment variables for both clusters"
+    cmds:
+      - task: eval-vars-dc1
+      - echo ""
+      - task: eval-vars-dc2
+
+  get-server-ips-dc1:
+    desc: "Get external server IPs for DC1 (for Kubernetes integration)"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "=== DC1 Server External IPs ==="
+      - gcloud compute instances list --filter='name~hashi-server' --format='value(name,EXTERNAL_IP)' | head -3
+      - echo ""
+      - echo "For Kubernetes Helm values, use these IPs in externalServers.hosts:"
+      - gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)' | head -3 | sed 's/^/  - "/' | sed 's/$/"/'
+
+  get-server-ips-dc2:
+    desc: "Get external server IPs for DC2 (for Kubernetes integration)"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "=== DC2 Server External IPs ==="
+      - gcloud compute instances list --filter='name~hashi-server' --format='value(name,EXTERNAL_IP)' | head -3
+      - echo ""
+      - echo "For Kubernetes Helm values, use these IPs in externalServers.hosts:"
+      - gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)' | head -3 | sed 's/^/  - "/' | sed 's/$/"/'
+
+  get-server-ips:
+    desc: "Get external server IPs for both clusters"
+    cmds:
+      - task: get-server-ips-dc1
+      - echo ""
+      - task: get-server-ips-dc2

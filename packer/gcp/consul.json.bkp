@@ -1,0 +1,29 @@
+{
+    "variables": {
+        "gcloud_account_json": "",
+        "gcp_project": "",
+        "sshuser": "dcanadillas",
+        "consul_image": "consul1-8-7",
+        "consul_version": ""
+    },
+    "builders": [
+        {
+            "type": "googlecompute",
+            "project_id": "{{user `gcp_project`}}",
+            "source_image_family": "debian-10",
+            "image_name": "{{user `consul_image`}}",
+            "image_family": "hc-consul",
+            "machine_type": "n1-standard-2",
+            "ssh_username": "{{user `sshuser`}}",
+            "zone": "europe-west1-c"
+
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "execute_command": "chmod +x {{ .Path }}; sudo '{{ .Path }}' {{ user `consul_version` }}",
+            "script": "consul_prep.sh"
+        }
+    ] 
+}

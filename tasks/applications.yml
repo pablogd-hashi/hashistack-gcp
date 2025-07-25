@@ -1,0 +1,347 @@
+version: '3'
+
+vars:
+  DC1_DIR: "../clusters/dc1/terraform"
+  DC2_DIR: "../clusters/dc2/terraform"
+  NOMAD_APPS_DIR: "../nomad-apps"
+
+# Application deployment tasks for Nomad clusters
+tasks:
+  # === Traefik Deployment ===
+  deploy-traefik-dc1:
+    desc: "Deploy Traefik to DC1"
+    dir: "../clusters/dc1"
+    vars:
+      NOMAD_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/traefik.hcl
+      - echo "Traefik deployed to DC1"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status traefik
+
+  deploy-traefik-https-dc1:
+    desc: "Deploy Traefik with HTTPS and Consul service registration to DC1"
+    dir: "../clusters/dc1"
+    vars:
+      NOMAD_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+      CONSUL_HTTP_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.consul.api'
+      CONSUL_HTTP_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.consul_token'
+    cmds:
+      - echo "Deploying Traefik with HTTPS support to DC1..."
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/traefik.hcl
+      - echo "Registering Traefik services in Consul..."
+      - export CONSUL_HTTP_ADDR="{{.CONSUL_HTTP_ADDR}}" && export CONSUL_HTTP_TOKEN="{{.CONSUL_HTTP_TOKEN}}" && consul services register jobs/monitoring/traefik-consul-service.hcl
+      - echo "Traefik HTTPS deployment complete!"
+      - echo "=== Traefik Status ==="
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status traefik
+      - echo "=== Consul Services ==="
+      - export CONSUL_HTTP_ADDR="{{.CONSUL_HTTP_ADDR}}" && export CONSUL_HTTP_TOKEN="{{.CONSUL_HTTP_TOKEN}}" && consul catalog services | grep traefik
+      - echo "=== Access URLs ==="
+      - echo "Traefik Dashboard - https://traefik.hc-1031dcc8d7c24bfdbb4c08979b0.gcp.sbx.hashicorpdemo.com"
+      - echo "Prometheus - https://prometheus.hc-1031dcc8d7c24bfdbb4c08979b0.gcp.sbx.hashicorpdemo.com"
+      - echo "Grafana - https://grafana.hc-1031dcc8d7c24bfdbb4c08979b0.gcp.sbx.hashicorpdemo.com"
+      - echo "Consul UI - https://consul.hc-1031dcc8d7c24bfdbb4c08979b0.gcp.sbx.hashicorpdemo.com"
+      - echo "Nomad UI - https://nomad.hc-1031dcc8d7c24bfdbb4c08979b0.gcp.sbx.hashicorpdemo.com"
+
+  deploy-traefik-dc2:
+    desc: "Deploy Traefik to DC2"
+    dir: "../clusters/dc2"
+    vars:
+      NOMAD_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/traefik.hcl
+      - echo "Traefik deployed to DC2"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status traefik
+
+  deploy-traefik:
+    desc: "Deploy Traefik to both clusters"
+    cmds:
+      - task: deploy-traefik-dc1
+      - task: deploy-traefik-dc2
+      - echo "=== Traefik deployed to both clusters ==="
+
+  # === Monitoring Stack ===
+  deploy-monitoring-dc1:
+    desc: "Deploy Prometheus, Grafana, and Loki to DC1"
+    dir: "../clusters/dc1"
+    vars:
+      NOMAD_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+      CONSUL_HTTP_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.consul.api'
+      CONSUL_HTTP_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.consul_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/loki.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/prometheus.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/grafana.hcl
+      - export CONSUL_HTTP_ADDR="{{.CONSUL_HTTP_ADDR}}" && export CONSUL_HTTP_TOKEN="{{.CONSUL_HTTP_TOKEN}}" && consul config write ../consul/peering/configs/proxy-defaults-access-logs.hcl
+      - echo "Monitoring stack with logging deployed to DC1"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status loki
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status prometheus
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status grafana
+
+  deploy-monitoring-dc2:
+    desc: "Deploy Prometheus, Grafana, and Loki to DC2"
+    dir: "../clusters/dc2"
+    vars:
+      NOMAD_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+      CONSUL_HTTP_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.consul.api'
+      CONSUL_HTTP_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.consul_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/loki.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/prometheus.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/monitoring/grafana.hcl
+      - export CONSUL_HTTP_ADDR="{{.CONSUL_HTTP_ADDR}}" && export CONSUL_HTTP_TOKEN="{{.CONSUL_HTTP_TOKEN}}" && consul config write ../consul/peering/configs/proxy-defaults-access-logs.hcl
+      - echo "Monitoring stack with logging deployed to DC2"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status loki
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status prometheus
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status grafana
+
+  deploy-monitoring:
+    desc: "Deploy monitoring stack to both clusters"
+    cmds:
+      - task: deploy-monitoring-dc1
+      - task: deploy-monitoring-dc2
+      - echo "=== Monitoring stack deployed to both clusters ==="
+
+  # === Demo Applications ===
+  deploy-demo-apps-dc1:
+    desc: "Deploy demo applications to DC1"
+    dir: "../clusters/dc1"
+    vars:
+      NOMAD_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/demo-fake-service/frontend.nomad.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/demo-fake-service/backend.nomad.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/api-gw.nomad.hcl
+      - echo "Demo applications deployed to DC1"
+
+  deploy-demo-apps-dc2:
+    desc: "Deploy demo applications to DC2"
+    dir: "../clusters/dc2"
+    vars:
+      NOMAD_ADDR:
+        sh: cd terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/demo-fake-service/frontend.nomad.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/demo-fake-service/backend.nomad.hcl
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job run jobs/api-gw.nomad.hcl
+      - echo "Demo applications deployed to DC2"
+
+  deploy-demo-apps:
+    desc: "Deploy demo applications to both clusters"
+    cmds:
+      - task: deploy-demo-apps-dc1
+      - task: deploy-demo-apps-dc2
+      - echo "=== Demo applications deployed to both clusters ==="
+
+  # === Application Access ===
+  app-ui-dc1:
+    desc: "Open DC1 frontend application in browser"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - |
+        APP_URL="http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8081"
+        echo "Opening DC1 app-ui at: $APP_URL"
+        open "$APP_URL" || echo "Visit: $APP_URL"
+
+  app-ui-dc2:
+    desc: "Open DC2 frontend application in browser"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - |
+        APP_URL="http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8081"
+        echo "Opening DC2 app-ui at: $APP_URL"
+        open "$APP_URL" || echo "Visit: $APP_URL"
+
+  app-ui:
+    desc: "Show both DC1 and DC2 app-ui URLs"
+    cmds:
+      - echo "=== Frontend Application URLs ==="
+      - task: app-ui-dc1
+      - task: app-ui-dc2
+
+  # === Traefik UI Access ===
+  traefik-ui-dc1:
+    desc: "Open DC1 Traefik dashboard in browser"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - |
+        TRAEFIK_URL="http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8080"
+        echo "Opening DC1 Traefik UI at- $TRAEFIK_URL"
+        open "$TRAEFIK_URL" || echo "Visit- $TRAEFIK_URL"
+
+  traefik-ui-dc2:
+    desc: "Open DC2 Traefik dashboard in browser"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - |
+        TRAEFIK_URL="http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8080"
+        echo "Opening DC2 Traefik UI at- $TRAEFIK_URL"
+        open "$TRAEFIK_URL" || echo "Visit- $TRAEFIK_URL"
+
+  traefik-ui:
+    desc: "Show both DC1 and DC2 Traefik UI URLs"
+    cmds:
+      - echo "=== Traefik Dashboard URLs ==="
+      - task: traefik-ui-dc1
+      - task: traefik-ui-dc2
+
+  show-urls:
+    desc: "Show all access URLs for both clusters"
+    cmds:
+      - echo "=== DC1 URLs ==="
+      - cd {{.DC1_DIR}} && terraform output hashistack_urls || echo "No URLs available"
+      - cd {{.DC1_DIR}} && terraform output monitoring_urls || echo "No monitoring URLs available"
+      - cd {{.DC1_DIR}} && echo "app-ui = http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8081" || echo "No app-ui URL available"
+      - cd {{.DC1_DIR}} && echo "traefik-ui = http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8080" || echo "No traefik-ui URL available"
+      - echo ""
+      - echo "=== DC2 URLs ==="
+      - cd {{.DC2_DIR}} && terraform output hashistack_urls || echo "No URLs available"
+      - cd {{.DC2_DIR}} && terraform output monitoring_urls || echo "No monitoring URLs available"
+      - cd {{.DC2_DIR}} && echo "app-ui = http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8081" || echo "No app-ui URL available"
+      - cd {{.DC2_DIR}} && echo "traefik-ui = http://$(terraform output -json load_balancers | jq -r '.clients_lb.ip'):8080" || echo "No traefik-ui URL available"
+
+  # === Microservices Demo Deployment ===
+  deploy-microservices-demo-dc1:
+    desc: "Deploy microservices demo to DC1"
+    dir: "{{.NOMAD_APPS_DIR}}/microservices-demo"
+    vars:
+      NOMAD_ADDR:
+        sh: cd ../../clusters/dc1/terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd ../../clusters/dc1/terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && ./deploy-all.sh
+      - echo "Microservices demo deployed to DC1"
+
+  deploy-microservices-demo-dc2:
+    desc: "Deploy microservices demo to DC2"
+    dir: "{{.NOMAD_APPS_DIR}}/microservices-demo"
+    vars:
+      NOMAD_ADDR:
+        sh: cd ../../clusters/dc2/terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd ../../clusters/dc2/terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && ./deploy-all.sh
+      - echo "Microservices demo deployed to DC2"
+
+  deploy-microservices-demo-monolith-dc1:
+    desc: "Deploy microservices demo (monolith) to DC1"
+    dir: "{{.NOMAD_APPS_DIR}}/microservices-demo"
+    vars:
+      NOMAD_ADDR:
+        sh: cd ../../clusters/dc1/terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd ../../clusters/dc1/terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && ./deploy-monolith.sh
+      - echo "Microservices demo (monolith) deployed to DC1"
+
+  deploy-microservices-demo-monolith-dc2:
+    desc: "Deploy microservices demo (monolith) to DC2"
+    dir: "{{.NOMAD_APPS_DIR}}/microservices-demo"
+    vars:
+      NOMAD_ADDR:
+        sh: cd ../../clusters/dc2/terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd ../../clusters/dc2/terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && ./deploy-monolith.sh
+      - echo "Microservices demo (monolith) deployed to DC2"
+
+  deploy-microservices-demo-both:
+    desc: "Deploy microservices demo to both DC1 and DC2"
+    cmds:
+      - task: deploy-microservices-demo-dc1
+      - task: deploy-microservices-demo-dc2
+      - echo "Microservices demo deployed to both clusters"
+
+  status-microservices-demo-dc1:
+    desc: "Check microservices demo status in DC1"
+    vars:
+      NOMAD_ADDR:
+        sh: cd {{.DC1_DIR}} && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd {{.DC1_DIR}} && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && echo "=== DC1 Microservices Demo Status ==="
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status frontend || echo "frontend not running"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status backend-services || echo "backend-services not running"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status redis-cart || echo "redis-cart not running"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status microservices-demo || echo "microservices-demo not running"
+
+  status-microservices-demo-dc2:
+    desc: "Check microservices demo status in DC2"
+    vars:
+      NOMAD_ADDR:
+        sh: cd {{.DC2_DIR}} && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd {{.DC2_DIR}} && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && echo "=== DC2 Microservices Demo Status ==="
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status frontend || echo "frontend not running"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status backend-services || echo "backend-services not running"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status redis-cart || echo "redis-cart not running"
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && nomad job status microservices-demo || echo "microservices-demo not running"
+
+  status-microservices-demo-both:
+    desc: "Check microservices demo status in both clusters"
+    cmds:
+      - task: status-microservices-demo-dc1
+      - task: status-microservices-demo-dc2
+
+  cleanup-microservices-demo-dc1:
+    desc: "Cleanup microservices demo from DC1"
+    dir: "{{.NOMAD_APPS_DIR}}/microservices-demo"
+    vars:
+      NOMAD_ADDR:
+        sh: cd ../../clusters/dc1/terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd ../../clusters/dc1/terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && ./cleanup.sh
+      - echo "Microservices demo cleaned up from DC1"
+
+  cleanup-microservices-demo-dc2:
+    desc: "Cleanup microservices demo from DC2"
+    dir: "{{.NOMAD_APPS_DIR}}/microservices-demo"
+    vars:
+      NOMAD_ADDR:
+        sh: cd ../../clusters/dc2/terraform && terraform output -json hashistack_urls | jq -r '.nomad.api'
+      NOMAD_TOKEN:
+        sh: cd ../../clusters/dc2/terraform && terraform output -json auth_tokens | jq -r '.nomad_token'
+    cmds:
+      - export NOMAD_ADDR="{{.NOMAD_ADDR}}" && export NOMAD_TOKEN="{{.NOMAD_TOKEN}}" && ./cleanup.sh
+      - echo "Microservices demo cleaned up from DC2"
+
+  cleanup-microservices-demo-both:
+    desc: "Cleanup microservices demo from both clusters"
+    cmds:
+      - task: cleanup-microservices-demo-dc1
+      - task: cleanup-microservices-demo-dc2
+      - echo "Microservices demo cleaned up from both clusters"

@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: frontend
+      app: frontend
+  template:
+    metadata:
+      labels:
+        service: frontend
+        app: frontend
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "frontend"
+        consul.hashicorp.com/connect-service-upstreams: "backend.backend.svc.cluster.local:9091:backend.backend"
+    spec:
+      serviceAccountName: frontend
+      containers:
+        - name: frontend
+          image: nicholasjackson/fake-service:v0.26.0
+          ports:
+            - containerPort: 9090
+          env:
+            - name: "LISTEN_ADDR"
+              value: "0.0.0.0:9090"
+            - name: "UPSTREAM_URIS"
+              value: "http://localhost:9091"
+            - name: "NAME"
+              value: "frontend"
+            - name: "MESSAGE"
+              value: "Hello World from frontend"
+            - name: "SERVER_TYPE"
+              value: "http"
+            - name: "HTTP_CLIENT_APPEND_REQUEST"
+              value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+  namespace: frontend
+  labels:
+    app: frontend
