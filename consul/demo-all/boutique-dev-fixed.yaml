@@ -1,0 +1,151 @@
+# Fixed version with correct Consul annotations
+# Service Accounts (keep as-is)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount  
+metadata:
+  name: redis-cart
+  namespace: development
+---
+# Redis Cart - FIXED VERSION
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cart
+  namespace: development
+spec:
+  selector:
+    matchLabels:
+      app: redis-cart
+  template:
+    metadata:
+      labels:
+        app: redis-cart
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"               # FIXED: correct annotation name
+        consul.hashicorp.com/namespace: "development"           # ADDED: namespace annotation
+    spec:
+      serviceAccountName: redis-cart
+      containers:
+      - name: redis
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
+        # FIXED: Remove probes or make them work with transparent proxy
+        # With transparent proxy, probes need to target localhost or be disabled
+        resources:
+          limits:
+            memory: 256Mi
+            cpu: 125m
+          requests:
+            cpu: 70m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /data
+          name: redis-data
+      volumes:
+      - name: redis-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cart
+  namespace: development
+spec:
+  type: ClusterIP
+  selector:
+    app: redis-cart
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+
+---
+# Frontend - FIXED VERSION  
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-fixed
+  namespace: development
+spec:
+  selector:
+    matchLabels:
+      app: frontend-fixed
+  template:
+    metadata:
+      labels:
+        app: frontend-fixed
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"               # FIXED: correct annotation name
+        consul.hashicorp.com/namespace: "development"           # ADDED: namespace annotation  
+        consul.hashicorp.com/connect-service-upstreams: "productcatalogservice.development.k8s-west1:3550,currencyservice.development.k8s-west1:7000,cartservice.development.k8s-west1:7070,recommendationservice.development.k8s-west1:8080,shippingservice.development.k8s-west1:50051,checkoutservice.development.k8s-west1:5050,adservice.development.k8s-west1:9555"
+    spec:
+      serviceAccountName: frontend
+      containers:
+      - name: server
+        image: gcr.io/google-samples/microservices-demo/frontend:v0.8.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: "localhost:3550"
+        - name: CURRENCY_SERVICE_ADDR
+          value: "localhost:7000"
+        - name: CART_SERVICE_ADDR
+          value: "localhost:7070"
+        - name: RECOMMENDATION_SERVICE_ADDR
+          value: "localhost:8080"
+        - name: SHIPPING_SERVICE_ADDR
+          value: "localhost:50051"
+        - name: CHECKOUT_SERVICE_ADDR
+          value: "localhost:5050"
+        - name: AD_SERVICE_ADDR
+          value: "localhost:9555"
+        # FIXED: Updated probes to work with transparent proxy
+        livenessProbe:
+          initialDelaySeconds: 10
+          httpGet:
+            path: "/_healthz"
+            port: 8080
+            httpHeaders:
+            - name: "Cookie"
+              value: "shop_session-id=x-liveness-probe"
+        readinessProbe:
+          initialDelaySeconds: 10
+          httpGet:
+            path: "/_healthz"
+            port: 8080
+            httpHeaders:
+            - name: "Cookie"
+              value: "shop_session-id=x-readiness-probe"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-fixed
+  namespace: development
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend-fixed
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080

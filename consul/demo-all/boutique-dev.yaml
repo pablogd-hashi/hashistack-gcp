@@ -1,0 +1,579 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: development
+---
+# ServiceAccounts
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: productcatalogservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: currencyservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cartservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: checkoutservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: paymentservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: emailservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shippingservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: recommendationservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: adservice
+  namespace: development
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: redis-cart
+  namespace: development
+---
+# Frontend Service + Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+        consul.hashicorp.com/connect-service-upstreams: "productcatalogservice.development.k8s-west1:3550,currencyservice.development.k8s-west1:7000,cartservice.development.k8s-west1:7070,recommendationservice.development.k8s-west1:8080,shippingservice.development.k8s-west1:50051,checkoutservice.development.k8s-west1:5050,adservice.development.k8s-west1:9555"
+    spec:
+      serviceAccountName: frontend
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/frontend:v0.8.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: "localhost:3550"
+            - name: CURRENCY_SERVICE_ADDR
+              value: "localhost:7000"
+            - name: CART_SERVICE_ADDR
+              value: "localhost:7070"
+            - name: RECOMMENDATION_SERVICE_ADDR
+              value: "localhost:8080"
+            - name: SHIPPING_SERVICE_ADDR
+              value: "localhost:50051"
+            - name: CHECKOUT_SERVICE_ADDR
+              value: "localhost:5050"
+            - name: AD_SERVICE_ADDR
+              value: "localhost:9555"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: development
+spec:
+  ports:
+    - port: 80
+      name: http
+      targetPort: 8080
+  selector:
+    app: frontend
+---
+# Product Catalog Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productcatalogservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: productcatalogservice
+  template:
+    metadata:
+      labels:
+        app: productcatalogservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: productcatalogservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/productcatalogservice:v0.8.0
+          ports:
+            - containerPort: 3550
+          env:
+            - name: PORT
+              value: "3550"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: productcatalogservice
+  namespace: development
+spec:
+  ports:
+    - port: 3550
+      name: grpc
+      targetPort: 3550
+  selector:
+    app: productcatalogservice
+---
+# Currency Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: currencyservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: currencyservice
+  template:
+    metadata:
+      labels:
+        app: currencyservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: currencyservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/currencyservice:v0.8.0
+          ports:
+            - containerPort: 7000
+          env:
+            - name: PORT
+              value: "7000"
+            - name: DISABLE_PROFILER
+              value: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: currencyservice
+  namespace: development
+spec:
+  ports:
+    - port: 7000
+      name: grpc
+      targetPort: 7000
+  selector:
+    app: currencyservice
+---
+# Cart Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cartservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cartservice
+  template:
+    metadata:
+      labels:
+        app: cartservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+        consul.hashicorp.com/connect-service-upstreams: "redis-cart.development.k8s-west1:6379"
+    spec:
+      serviceAccountName: cartservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/cartservice:v0.8.0
+          ports:
+            - containerPort: 7070
+          env:
+            - name: PORT
+              value: "7070"
+            - name: REDIS_ADDR
+              value: "localhost:6379"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cartservice
+  namespace: development
+spec:
+  ports:
+    - port: 7070
+      name: grpc
+      targetPort: 7070
+  selector:
+    app: cartservice
+---
+# Checkout Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkoutservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkoutservice
+  template:
+    metadata:
+      labels:
+        app: checkoutservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: checkoutservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/checkoutservice:v0.8.0
+          ports:
+            - containerPort: 5050
+          env:
+            - name: PORT
+              value: "5050"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: "localhost:3550"
+            - name: SHIPPING_SERVICE_ADDR
+              value: "localhost:50051"
+            - name: PAYMENT_SERVICE_ADDR
+              value: "localhost:50051"
+            - name: EMAIL_SERVICE_ADDR
+              value: "localhost:8080"
+            - name: CURRENCY_SERVICE_ADDR
+              value: "localhost:7000"
+            - name: CART_SERVICE_ADDR
+              value: "localhost:7070"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkoutservice
+  namespace: development
+spec:
+  ports:
+    - port: 5050
+      name: grpc
+      targetPort: 5050
+  selector:
+    app: checkoutservice
+---
+# Payment Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymentservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paymentservice
+  template:
+    metadata:
+      labels:
+        app: paymentservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: paymentservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/paymentservice:v0.8.0
+          ports:
+            - containerPort: 50051
+          env:
+            - name: PORT
+              value: "50051"
+            - name: DISABLE_PROFILER
+              value: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paymentservice
+  namespace: development
+spec:
+  ports:
+    - port: 50051
+      name: grpc
+      targetPort: 50051
+  selector:
+    app: paymentservice
+---
+# Email Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emailservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: emailservice
+  template:
+    metadata:
+      labels:
+        app: emailservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: emailservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/emailservice:v0.8.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: emailservice
+  namespace: development
+spec:
+  ports:
+    - port: 8080
+      name: grpc
+      targetPort: 8080
+  selector:
+    app: emailservice
+---
+# Shipping Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shippingservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shippingservice
+  template:
+    metadata:
+      labels:
+        app: shippingservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: shippingservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/shippingservice:v0.8.0
+          ports:
+            - containerPort: 50051
+          env:
+            - name: PORT
+              value: "50051"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shippingservice
+  namespace: development
+spec:
+  ports:
+    - port: 50051
+      name: grpc
+      targetPort: 50051
+  selector:
+    app: shippingservice
+---
+# Recommendation Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendationservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendationservice
+  template:
+    metadata:
+      labels:
+        app: recommendationservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: recommendationservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/recommendationservice:v0.8.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: "localhost:3550"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendationservice
+  namespace: development
+spec:
+  ports:
+    - port: 8080
+      name: grpc
+      targetPort: 8080
+  selector:
+    app: recommendationservice
+---
+# Ad Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adservice
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adservice
+  template:
+    metadata:
+      labels:
+        app: adservice
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: adservice
+      containers:
+        - name: server
+          image: gcr.io/google-samples/microservices-demo/adservice:v0.8.0
+          ports:
+            - containerPort: 9555
+          env:
+            - name: PORT
+              value: "9555"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adservice
+  namespace: development
+spec:
+  ports:
+    - port: 9555
+      name: grpc
+      targetPort: 9555
+  selector:
+    app: adservice
+---
+# Redis Cart
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cart
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-cart
+  template:
+    metadata:
+      labels:
+        app: redis-cart
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/partition: "k8s-west1"
+        consul.hashicorp.com/namespace: "development"
+    spec:
+      serviceAccountName: redis-cart
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cart
+  namespace: development
+spec:
+  ports:
+    - port: 6379
+      name: redis
+      targetPort: 6379
+  selector:
+    app: redis-cart
+

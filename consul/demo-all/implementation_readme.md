@@ -472,58 +472,90 @@ unzip cts.zip
 sudo mv consul-terraform-sync /usr/local/bin/
 ```
 
-**CTS Configuration:**
+**CTS Configuration with HCP Terraform Integration:**
 ```bash
 # Set your GCP Consul server details
 export CONSUL_SERVER_IP="<your-dc1-server-ip>"  # Your DC1 server IP
 export CONSUL_HTTP_ADDR="http://$CONSUL_SERVER_IP:8500"
 export CONSUL_HTTP_TOKEN="<your-bootstrap-token>"  # Your bootstrap token
 
-# CTS configuration for k8s-southwest1 partition
+# CTS configuration for k8s-southwest1 partition with HCP Terraform integration
 cat > consul-terraform-sync.hcl << 'EOF'
 log_level = "INFO"
 port = 8558
 
 consul {
-  address = "<your-dc1-server-ip>:8500"  # Direct connection to GCP Consul server
-  token = "<your-bootstrap-token>"       # Your bootstrap token
+  address = "http://<your-dc1-server-ip>:8500"  # Direct connection to GCP Consul server
+  token = "<your-bootstrap-token>"               # Your bootstrap token
 }
 
 driver "terraform" {
   log = true
   path = "/tmp/cts-terraform"
+  
+  # HCP Terraform Cloud integration - use existing GKE Southwest workspace
+  backend "remote" {
+    hostname     = "app.terraform.io"
+    organization = "pablogd-hcp-test"  # Your HCP Terraform org
+    
+    workspaces {
+      name = "GKE-southwest"  # Use your existing GKE Southwest workspace
+    }
+  }
+  
+  # Required for HCP Terraform
+  required_providers {
+    consul = {
+      source = "hashicorp/consul"
+    }
+    google = {
+      source = "hashicorp/google"
+    }
+  }
 }
 
 task {
-  name = "boutique-load-balancer-sync"
-  description = "Update load balancer when production intentions change for minimal boutique"
+  name = "boutique-gke-infrastructure-sync"
+  description = "Update GKE infrastructure when production services change for minimal boutique"
   enabled = true
   
   # Updated syntax for CTS v0.8.0
   condition "services" {
     names = [
-      "frontend.production.k8s-southwest1",
-      "productcatalogservice.production.k8s-southwest1", 
-      "cartservice.production.k8s-southwest1",
-      "currencyservice.production.k8s-southwest1",
-      "redis-cart.production.k8s-southwest1"
+      "frontend",
+      "productcatalogservice", 
+      "cartservice",
+      "currencyservice",
+      "redis-cart"
     ]
   }
   
-  # For demo purposes - create a simple module or disable this task
-  module = "findkim/print/cts"  # Simple demo module that just prints service info
-  
-  # Alternative: use local demo module (create simple one for demo)
-  # module = "./demo-module"
+  # Use GKE integration module that works with existing infrastructure
+  module = "./gke-integration-module"
 }
 EOF
 
-# Create a realistic demo module that simulates infrastructure updates
-mkdir -p demo-module
-cat > demo-module/main.tf << 'EOF'
-# Demo: Simulate updating load balancer configuration based on Consul services
+# Create GKE integration module that works with your existing HCP Terraform workspace
+mkdir -p gke-integration-module
+cat > gke-integration-module/main.tf << 'EOF'
+# CTS Integration with Existing GKE Southwest Infrastructure
+# This module integrates CTS with your existing GKE-southwest workspace
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    consul = {
+      source  = "hashicorp/consul"
+      version = "~> 2.0"
+    }
+  }
+}
+
+# Variable that CTS provides - services discovered from Consul
 variable "services" {
-  description = "Services monitored by CTS"
+  description = "Services monitored by CTS from Consul k8s-southwest1 partition"
   type        = map(object({
     id      = string
     name    = string
@@ -533,70 +565,137 @@ variable "services" {
   }))
 }
 
-# Simulate creating/updating load balancer target groups
-resource "local_file" "load_balancer_config" {
-  filename = "/tmp/load-balancer-config.json"
+# Reference your existing GKE cluster from the GKE-southwest workspace
+data "google_container_cluster" "existing_cluster" {
+  name     = "gke-southwest-gke"  # Based on your ${var.cluster_name}-gke pattern
+  location = "europe-southwest1"  # Your GKE region
+}
+
+# Reference your existing network from the GKE-southwest workspace
+data "google_compute_network" "existing_network" {
+  name = "gke-southwest-gke-network"  # Based on your ${var.cluster_name}-gke-network pattern
+}
+
+# Create additional firewall rules for discovered services
+resource "google_compute_firewall" "consul_services_ingress" {
+  for_each = { for name, svc in var.services : name => svc if svc.name == "frontend" }
+  
+  name    = "cts-boutique-${replace(each.key, ".", "-")}-ingress"
+  network = data.google_compute_network.existing_network.name
+
+  allow {
+    protocol = "tcp"
+    ports    = [tostring(each.value.port)]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["gke-node"]
+  description   = "CTS managed firewall rule for ${each.value.name} service"
+}
+
+# Create Consul KV entries to track CTS infrastructure changes
+resource "consul_keys" "cts_infrastructure_state" {
+  key {
+    path  = "cts/gke-southwest/infrastructure/firewall_rules"
+    value = jsonencode({
+      timestamp = timestamp()
+      rules_created = length([for s in var.services : s if s.name == "frontend"])
+      service_ports = [for name, svc in var.services : "${svc.name}:${svc.port}"]
+      cluster_name = data.google_container_cluster.existing_cluster.name
+      network_name = data.google_compute_network.existing_network.name
+    })
+  }
+  
+  key {
+    path  = "cts/gke-southwest/services/current_state"
+    value = jsonencode({
+      timestamp = timestamp()
+      total_services = length(var.services)
+      services = {
+        for name, svc in var.services : name => {
+          name = svc.name
+          address = svc.address
+          port = svc.port
+          tags = svc.tags
+        }
+      }
+      partition = "k8s-southwest1"
+      namespace = "production"
+    })
+  }
+}
+
+# Create monitoring configuration for the boutique services
+resource "local_file" "gke_service_monitoring" {
+  filename = "/tmp/gke-southwest-services.json"
   content = jsonencode({
     timestamp = timestamp()
+    cluster = data.google_container_cluster.existing_cluster.name
+    location = data.google_container_cluster.existing_cluster.location
+    network = data.google_compute_network.existing_network.name
     services = {
       for name, service in var.services : name => {
-        name    = service.name
-        address = service.address
-        port    = service.port
-        tags    = service.tags
-        target_group = "tg-${replace(service.name, ".", "-")}"
-        health_check = "http://${service.address}:${service.port}/health"
+        name = service.name
+        endpoint = "${service.address}:${service.port}"
+        firewall_rule = service.name == "frontend" ? google_compute_firewall.consul_services_ingress[name].name : null
+        monitoring_target = "${service.address}:${service.port}"
+        health_check_url = "http://${service.address}:${service.port}/health"
       }
     }
-    total_services = length(var.services)
-    frontend_replicas = length([for s in var.services : s if contains(split(".", s.name), "frontend")])
-  })
-}
-
-# Simulate updating monitoring configuration
-resource "local_file" "monitoring_config" {
-  filename = "/tmp/prometheus-targets.yml"
-  content = yamlencode({
-    targets = [
-      for name, service in var.services : "${service.address}:${service.port}"
-    ]
-    labels = {
-      environment = "production"
-      partition = "k8s-southwest1"
-      managed_by = "consul-terraform-sync"
+    infrastructure_updates = {
+      firewall_rules_created = length([for s in var.services : s if s.name == "frontend"])
+      consul_kv_updated = true
     }
   })
 }
 
-output "infrastructure_updates" {
+# Output integration summary
+output "gke_integration_summary" {
   value = {
-    load_balancer_targets = length(var.services)
-    monitoring_targets = length(var.services)
-    config_files_updated = [
-      local_file.load_balancer_config.filename,
-      local_file.monitoring_config.filename
-    ]
-    summary = "Updated infrastructure for ${length(var.services)} services in k8s-southwest1"
+    timestamp = timestamp()
+    cluster_integration = {
+      cluster_name = data.google_container_cluster.existing_cluster.name
+      cluster_location = data.google_container_cluster.existing_cluster.location
+      network_name = data.google_compute_network.existing_network.name
+      services_integrated = length(var.services)
+    }
+    infrastructure_updates = {
+      firewall_rules = [
+        for name, svc in var.services : 
+        google_compute_firewall.consul_services_ingress[name].name 
+        if svc.name == "frontend"
+      ]
+      monitoring_config = local_file.gke_service_monitoring.filename
+      consul_kv_entries = [
+        "cts/gke-southwest/infrastructure/firewall_rules",
+        "cts/gke-southwest/services/current_state"
+      ]
+    }
+    service_discovery = {
+      partition = "k8s-southwest1"
+      namespace = "production"
+      services_monitored = [for name, svc in var.services : svc.name]
+      frontend_services = [for name, svc in var.services : svc.name if svc.name == "frontend"]
+    }
   }
 }
 EOF
 
-# Update the module path if using local demo module
-sed -i '' 's|findkim/print/cts|./demo-module|g' consul-terraform-sync.hcl
-
-# Start CTS (background process for demo) - connects directly to GCP
+# Start CTS with HCP Terraform integration - connects to both GCP Consul and HCP Terraform
 consul-terraform-sync start -config-file=consul-terraform-sync.hcl &
 sleep 10
-curl -s http://localhost:8558/v1/status | jq '.status' && echo "✅ CTS running locally, connected to GCP Consul"
+curl -s http://localhost:8558/v1/status | jq '.status' && echo "✅ CTS running locally, connected to GCP Consul and HCP Terraform"
 ```
 
 **Verification**:
 - CTS should start without errors (check logs if needed)
 - `curl http://localhost:8558/v1/status` should return JSON with status information
-- You should see "✅ CTS running locally" message
+- You should see "✅ CTS running locally, connected to GCP Consul and HCP Terraform" message
 - CTS is configured to watch the 5 minimal boutique services
+- **HCP Terraform Integration**: CTS will execute Terraform runs in your existing `GKE-southwest` workspace
+- **Infrastructure Integration**: Module references your existing GKE cluster and network infrastructure
 
-**Demonstrating CTS Infrastructure Automation:**
+**Demonstrating CTS Infrastructure Automation with HCP Terraform:**
 
 ```bash
 # 1. Check initial CTS task status
@@ -606,27 +705,35 @@ curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0].status'
 kubectl scale deployment frontend --replicas=3 -n production
 kubectl scale deployment productcatalogservice --replicas=2 -n production
 
-# 3. Wait a moment for CTS to detect changes and run Terraform
-sleep 30
+# 3. Wait for CTS to detect changes and trigger HCP Terraform run
+sleep 60  # HCP Terraform runs take longer than local execution
 
-# 4. Check that CTS executed Terraform
+# 4. Check that CTS executed Terraform in your HCP workspace
 curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0]'
 
-# 5. View the "infrastructure" files that CTS/Terraform created
-cat /tmp/load-balancer-config.json | jq '.'  # Load balancer targets
-cat /tmp/prometheus-targets.yml              # Monitoring targets
+# 5. Check HCP Terraform workspace for the actual run
+echo "🚀 Check your HCP Terraform workspace 'GKE-southwest' for the triggered run"
+echo "https://app.terraform.io/app/pablogd-hcp-test/workspaces/GKE-southwest"
 
-# 6. Scale back and watch CTS update infrastructure again
+# 6. View the infrastructure monitoring file that was created
+cat /tmp/gke-southwest-services.json | jq '.'  # GKE service integration status
+
+# 7. Check Consul KV for infrastructure state tracking
+consul kv get cts/gke-southwest/infrastructure/firewall_rules | jq '.'
+consul kv get cts/gke-southwest/services/current_state | jq '.'
+
+# 8. Scale back and watch CTS trigger another HCP Terraform run
 kubectl scale deployment frontend --replicas=1 -n production
-sleep 30
-cat /tmp/load-balancer-config.json | jq '.frontend_replicas'  # Should show 1
+sleep 60
+curl -s http://localhost:8558/v1/status/tasks | jq '.tasks[0].status'
 ```
 
 **What This Demonstrates:**
-- **Service Discovery Integration**: CTS monitors Consul service registry
-- **Infrastructure Automation**: When services change, Terraform updates infrastructure
-- **Real-World Simulation**: Load balancer and monitoring configs updated automatically
-- **Audit Trail**: JSON files show what infrastructure changes were made and when
+- **HCP Terraform Integration**: CTS triggers actual Terraform runs in your existing workspace
+- **Real Infrastructure Updates**: Firewall rules are created/updated in your GKE Southwest cluster
+- **Service Discovery Integration**: CTS monitors Consul service registry in k8s-southwest1 partition  
+- **Infrastructure Audit Trail**: Consul KV stores detailed infrastructure change history
+- **Enterprise-Grade Automation**: Uses your existing HCP Terraform workflows and permissions
 
 ## Step 5: Promote to Production
 
