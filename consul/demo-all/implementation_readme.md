@@ -499,22 +499,52 @@ task {
   description = "Update load balancer when production intentions change for minimal boutique"
   enabled = true
   
-  services = [
-    "frontend.production.k8s-southwest1",
-    "productcatalogservice.production.k8s-southwest1", 
-    "cartservice.production.k8s-southwest1",
-    "currencyservice.production.k8s-southwest1",
-    "redis-cart.production.k8s-southwest1"
-  ]
+  # Updated syntax for CTS v0.8.0
+  condition "services" {
+    names = [
+      "frontend.production.k8s-southwest1",
+      "productcatalogservice.production.k8s-southwest1", 
+      "cartservice.production.k8s-southwest1",
+      "currencyservice.production.k8s-southwest1",
+      "redis-cart.production.k8s-southwest1"
+    ]
+  }
   
-  module = "/path/to/terraform-loadbalancer-module"
+  # For demo purposes - create a simple module or disable this task
+  module = "findkim/print/cts"  # Simple demo module that just prints service info
   
-  condition "consul-kv" {
-    path = "cts/production/intentions"
-    recurse = true
+  # Alternative: use local demo module (create simple one for demo)
+  # module = "./demo-module"
+}
+EOF
+
+# Optional: Create a simple demo module for testing (if you want to see actual Terraform execution)
+mkdir -p demo-module
+cat > demo-module/main.tf << 'EOF'
+# Simple demo module that prints service information
+variable "services" {
+  description = "Services monitored by CTS"
+  type        = map(object({
+    id      = string
+    name    = string
+    address = string
+    port    = number
+  }))
+}
+
+output "monitored_services" {
+  value = {
+    for name, service in var.services : name => {
+      name    = service.name
+      address = service.address
+      port    = service.port
+    }
   }
 }
 EOF
+
+# Update the module path if using local demo module
+sed -i 's|findkim/print/cts|./demo-module|g' consul-terraform-sync.hcl
 
 # Start CTS (background process for demo) - connects directly to GCP
 consul-terraform-sync start -config-file=consul-terraform-sync.hcl &
