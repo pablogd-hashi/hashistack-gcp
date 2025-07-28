@@ -1,0 +1,44 @@
+log_level = "INFO"
+port = 8558
+
+consul {
+  address = "http://your-consul-server:8500"  # Your Consul server address
+  token = "your-consul-admin-token"           # Your bootstrap/admin token
+}
+
+# Option 1: Use Terraform Cloud/HCP Terraform
+driver "terraform-cloud" {
+  hostname     = "app.terraform.io"
+  organization = "your-organization"
+  workspace {
+    name = "your-workspace-name"
+  }
+}
+
+# Option 2: Use local Terraform (comment out terraform-cloud above)
+# driver "terraform" {
+#   log = true
+#   persist_log = true
+# }
+
+task {
+  name = "boutique-load-balancer-sync"
+  description = "Update load balancer when production intentions change for minimal boutique"
+  enabled = true
+
+  # Monitor specific services for changes
+  condition "services" {
+    names = [
+      "frontend",
+      "productcatalogservice", 
+      "cartservice",
+      "currencyservice",
+      "redis-cart"
+    ]
+    datacenter = "your-datacenter"  # Optional: specify datacenter
+    namespace = "your-namespace"    # Optional: specify Consul namespace
+  }
+
+  # Path to your Terraform module
+  module = "./demo-module"
+}
