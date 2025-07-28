@@ -278,4 +278,4 @@ Thumbs.db
 # 8. IDE and system files that could leak information
 #
 # Always review files before committing and never commit real secrets!
-# Use environment variables, secret management systems, or encrypted storage.
+# Use environment variables, secret management systems, or encrypted storage.consul-terraform-sync.hcl
