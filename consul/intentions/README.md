@@ -1,10 +1,8 @@
 # Service Intentions Guide
 
-This guide covers Consul service intentions for securing service mesh communication.
-
 ## Overview
 
-Service intentions control which services can communicate in the Consul service mesh. In Consul Enterprise, intentions are required for service-to-service communication.
+Service intentions control which services can communicate in the Consul service mesh. In Consul Enterprise, intentions are required for service-to-service communication. This guide covers Consul service intentions for securing service mesh communication.
 
 ## Prerequisites
 
@@ -13,7 +11,7 @@ Service intentions control which services can communicate in the Consul service 
 3. Admin partitions configured (if using multiple partitions)
 4. Valid Consul admin token with intention management permissions
 
-## Setup
+## How to run in tasks
 
 ### Step 1: Configure Consul Environment
 

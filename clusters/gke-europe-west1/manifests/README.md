@@ -1,10 +1,8 @@
 # GKE Consul Integration - Complete Setup Guide
 
-This directory contains the complete, tested configuration to integrate a GKE cluster with existing HashiCorp Consul infrastructure as an admin partition client.
-
 ## Overview
 
-The GKE cluster connects to existing Consul servers as a client in the **k8s-test** admin partition, enabling:
+This directory contains the complete, tested configuration to integrate a GKE cluster with existing HashiCorp Consul infrastructure as an admin partition client. The GKE cluster connects to existing Consul servers as a client in the **k8s-test** admin partition, enabling:
 - ✅ Service mesh connectivity between Kubernetes and Nomad workloads
 - ✅ Consul Connect service discovery across platforms
 - ✅ Cross-platform service communication
@@ -38,7 +36,7 @@ The GKE cluster connects to existing Consul servers as a client in the **k8s-tes
 - `deploy-consul.sh` - Script to deploy Consul using Helm
 - `create-partition-token.sh` - Script to create new admin partitions and tokens
 
-## Complete Setup Process
+## How to run in tasks
 
 ### Step 1: Authenticate with GKE
 

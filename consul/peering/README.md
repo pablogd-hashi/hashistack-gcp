@@ -1,8 +1,10 @@
 # Consul Cluster Peering
 
+## Overview
+
 Consul cluster peering enables secure service mesh communication between separate Consul datacenters without requiring WAN federation. This configuration establishes peering between DC1 and DC2 clusters, allowing services in one datacenter to discover and communicate with services in another datacenter through encrypted mesh gateways.
 
-## What Cluster Peering Provides
+### What Cluster Peering Provides
 
 **Cross-Datacenter Service Mesh:**
 - Secure service-to-service communication across datacenters
@@ -31,7 +33,7 @@ This guide provides the step-by-step process to establish cluster peering betwee
 - Nomad Enterprise running on both clusters
 - Valid Consul and Nomad tokens available
 
-## Setup Order
+## How to run in tasks
 
 ### Phase 1: Configure Nomad-Consul Integration
 

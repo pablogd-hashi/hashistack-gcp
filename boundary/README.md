@@ -1,8 +1,10 @@
 # HashiCorp Boundary Integration
 
+## Overview
+
 HashiCorp Boundary integration provides secure, authenticated remote access to your HashiStack infrastructure without exposing SSH keys or requiring VPN connections. This integration automatically discovers your deployed infrastructure and creates secure SSH access targets.
 
-## What This Integration Provides
+### What This Integration Provides
 
 **Secure Access Targets:**
 - SSH access to Consul/Nomad server nodes
@@ -39,7 +41,7 @@ HashiCorp Boundary integration provides secure, authenticated remote access to y
 - GCP compute instance list permissions
 - SSH key access for credential injection
 
-## Setup Instructions
+## How to run in tasks
 
 ### 1. Deploy Base Infrastructure
 

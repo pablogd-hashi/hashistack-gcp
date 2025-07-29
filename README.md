@@ -1,9 +1,11 @@
 # HashiCorp Enterprise Stack on Google Cloud Platform
 
-A production-ready deployment of HashiCorp Consul Enterprise and Nomad Enterprise on Google Cloud Platform with monitoring, security, and enterprise features. 
-This repository provides infrastructure-as-code for deploying a complete HashiCorp stack ONLY for demo purposes. Do not do deploy this in Production
+## Overview
 
-## What This Repository Deploys
+A production-ready deployment of HashiCorp Consul Enterprise and Nomad Enterprise on Google Cloud Platform with monitoring, security, and enterprise features. 
+This repository provides infrastructure-as-code for deploying a complete HashiCorp stack ONLY for demo purposes. Do not deploy this in Production.
+
+### What This Repository Deploys
 
 This repository creates a complete HashiCorp enterprise ecosystem on GCP including:
 
@@ -58,7 +60,7 @@ Before deploying this stack, ensure you have:
 - DNS API enabled (if using custom domains)
 - Service account with appropriate permissions
 
-## Initial Setup
+## How to run in tasks
 
 ### 1. Configure Variable Sets (HCP Terraform) or terraform.auto.tfvars
 

@@ -1,8 +1,10 @@
 # Consul Enterprise Admin Partitions
 
+## Overview
+
 Consul Enterprise admin partitions provide multi-tenant isolation within a single Consul datacenter. This configuration deploys Consul Enterprise on Google Kubernetes Engine (GKE) with separate partitions for different environments and teams, while maintaining secure service mesh connectivity across partitions.
 
-## What Admin Partitions Provide
+### What Admin Partitions Provide
 
 **Multi-Tenant Isolation:**
 - Complete administrative boundaries between teams/environments
@@ -48,7 +50,7 @@ Consul Servers (VMs) - Enterprise
 - **DC1**: API Gateway for mesh ingress
 - **DC2**: API Gateway for mesh ingress (to be deployed)
 
-## 🔐 Prerequisites
+## Prerequisites
 
 1. **Consul Enterprise** running on VMs with admin partitions enabled
 2. **Two GKE clusters** deployed and accessible
@@ -57,7 +59,7 @@ Consul Servers (VMs) - Enterprise
 5. **CA certificates** from Consul servers
 6. **Nomad clusters** (DC1/DC2) with API gateways
 
-## 📝 Step-by-Step Deployment Procedure
+## How to run in tasks
 
 ### Phase 1: Environment Setup and Validation
 
