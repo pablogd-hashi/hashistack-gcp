@@ -9,8 +9,8 @@ buffer_period {
 }
 
 consul {
-  address = "http://34.88.51.53:8500"
-  token = "ConsulR0cks"
+  address = "[YOURCONSULSERVER]:8500"
+  token = "YOURTOKEN"
 }
 
 driver "terraform" {
