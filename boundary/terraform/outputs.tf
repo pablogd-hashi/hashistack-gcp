@@ -97,7 +97,7 @@ output "boundary_roles" {
   }
 }
 
-# Target Information
+# Target Information - SSH only
 output "boundary_targets" {
   description = "Created Boundary targets"
   value = merge(
@@ -114,30 +114,6 @@ output "boundary_targets" {
         type = "ssh"
         port = 22
       }
-      dc1_consul_ui = {
-        id   = boundary_target.dc1_consul_ui[0].id
-        name = boundary_target.dc1_consul_ui[0].name
-        type = "tcp"
-        port = 8500
-      }
-      dc1_nomad_ui = {
-        id   = boundary_target.dc1_nomad_ui[0].id
-        name = boundary_target.dc1_nomad_ui[0].name
-        type = "tcp"
-        port = 4646
-      }
-      dc1_grafana = {
-        id   = boundary_target.dc1_grafana[0].id
-        name = boundary_target.dc1_grafana[0].name
-        type = "tcp"
-        port = 3000
-      }
-      dc1_prometheus = {
-        id   = boundary_target.dc1_prometheus[0].id
-        name = boundary_target.dc1_prometheus[0].name
-        type = "tcp"
-        port = 9090
-      }
     } : {},
     var.dc2_deployed ? {
       dc2_servers_ssh = {
@@ -152,41 +128,17 @@ output "boundary_targets" {
         type = "ssh"
         port = 22
       }
-      dc2_consul_ui = {
-        id   = boundary_target.dc2_consul_ui[0].id
-        name = boundary_target.dc2_consul_ui[0].name
-        type = "tcp"
-        port = 8500
-      }
-      dc2_nomad_ui = {
-        id   = boundary_target.dc2_nomad_ui[0].id
-        name = boundary_target.dc2_nomad_ui[0].name
-        type = "tcp"
-        port = 4646
-      }
-      dc2_grafana = {
-        id   = boundary_target.dc2_grafana[0].id
-        name = boundary_target.dc2_grafana[0].name
-        type = "tcp"
-        port = 3000
-      }
-      dc2_prometheus = {
-        id   = boundary_target.dc2_prometheus[0].id
-        name = boundary_target.dc2_prometheus[0].name
-        type = "tcp"
-        port = 9090
-      }
     } : {}
   )
 }
 
-# Connection Commands
+# Connection Commands - SSH only  
 output "connection_commands" {
-  description = "Ready-to-use connection commands"
+  description = "Ready-to-use SSH connection commands"
   value = {
     authentication = [
       "export BOUNDARY_ADDR=${data.hcp_boundary_cluster.main.cluster_url}",
-      "boundary authenticate password -auth-method-id ${var.boundary_auth_method_id} -login-name admin"
+      "boundary authenticate password -auth-method-id ${var.boundary_auth_method_id} -login-name ${var.boundary_admin_login_name}"
     ]
     ssh_commands = concat(
       var.dc1_deployed ? [
@@ -196,20 +148,6 @@ output "connection_commands" {
       var.dc2_deployed ? [
         "boundary connect ssh -target-id ${boundary_target.dc2_servers_ssh[0].id}  # DC2 servers",
         "boundary connect ssh -target-id ${boundary_target.dc2_clients_ssh[0].id}  # DC2 clients"
-      ] : []
-    )
-    ui_commands = concat(
-      var.dc1_deployed ? [
-        "boundary connect -target-id ${boundary_target.dc1_consul_ui[0].id} -listen-port 8500  # DC1 Consul UI -> http://localhost:8500",
-        "boundary connect -target-id ${boundary_target.dc1_nomad_ui[0].id} -listen-port 4646   # DC1 Nomad UI -> http://localhost:4646",
-        "boundary connect -target-id ${boundary_target.dc1_grafana[0].id} -listen-port 3000    # DC1 Grafana -> http://localhost:3000",
-        "boundary connect -target-id ${boundary_target.dc1_prometheus[0].id} -listen-port 9090  # DC1 Prometheus -> http://localhost:9090"
-      ] : [],
-      var.dc2_deployed ? [
-        "boundary connect -target-id ${boundary_target.dc2_consul_ui[0].id} -listen-port 8501  # DC2 Consul UI -> http://localhost:8501",
-        "boundary connect -target-id ${boundary_target.dc2_nomad_ui[0].id} -listen-port 4647   # DC2 Nomad UI -> http://localhost:4647",
-        "boundary connect -target-id ${boundary_target.dc2_grafana[0].id} -listen-port 3001    # DC2 Grafana -> http://localhost:3001",
-        "boundary connect -target-id ${boundary_target.dc2_prometheus[0].id} -listen-port 9091  # DC2 Prometheus -> http://localhost:9091"
       ] : []
     )
   }
@@ -224,22 +162,19 @@ output "boundary_summary" {
       var.dc1_deployed ? "DC1" : null,
       var.dc2_deployed ? "DC2" : null
     ])
-    total_targets = length(keys(merge(
+    total_ssh_targets = length(keys(merge(
       var.dc1_deployed ? {
-        dc1_servers_ssh = "ssh", dc1_clients_ssh = "ssh",
-        dc1_consul_ui = "tcp", dc1_nomad_ui = "tcp",
-        dc1_grafana = "tcp", dc1_prometheus = "tcp"
+        dc1_servers_ssh = "ssh", dc1_clients_ssh = "ssh"
       } : {},
       var.dc2_deployed ? {
-        dc2_servers_ssh = "ssh", dc2_clients_ssh = "ssh",
-        dc2_consul_ui = "tcp", dc2_nomad_ui = "tcp",
-        dc2_grafana = "tcp", dc2_prometheus = "tcp"
+        dc2_servers_ssh = "ssh", dc2_clients_ssh = "ssh"
       } : {}
     )))
     total_hosts = (var.dc1_deployed ? (length(local.dc1_server_ips) + length(local.dc1_client_ips)) : 0) + (var.dc2_deployed ? (length(local.dc2_server_ips) + length(local.dc2_client_ips)) : 0)
+    target_types = ["SSH only - servers and clients"]
     next_steps = [
-      "Run 'task boundary:connect' to see connection commands",
-      "Run 'task boundary:setup-workers' to deploy workers",
+      "Update GCP infrastructure with matching SSH public key",
+      "Run 'terraform output connection_commands' to see SSH commands",
       "Visit ${data.hcp_boundary_cluster.main.cluster_url} to manage users and permissions"
     ]
   }

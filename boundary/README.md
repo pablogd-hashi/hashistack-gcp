@@ -1,16 +1,12 @@
 # HashiCorp Boundary Integration
 
-HashiCorp Boundary integration provides secure, authenticated remote access to your HashiStack infrastructure without exposing SSH keys or requiring VPN connections. This integration automatically discovers your deployed infrastructure and creates secure access targets for both SSH and web UI access.
+HashiCorp Boundary integration provides secure, authenticated remote access to your HashiStack infrastructure without exposing SSH keys or requiring VPN connections. This integration automatically discovers your deployed infrastructure and creates secure SSH access targets.
 
 ## What This Integration Provides
 
 **Secure Access Targets:**
 - SSH access to Consul/Nomad server nodes
-- SSH access to Nomad client nodes  
-- TCP tunnels for Consul UI (port 8500)
-- TCP tunnels for Nomad UI (port 4646)
-- TCP tunnels for Grafana (port 3000)
-- TCP tunnels for Prometheus (port 9090)
+- SSH access to Nomad client nodes
 
 **Enterprise Features:**
 - Centralized access control and policies
@@ -116,11 +112,7 @@ Global Scope
 │   │   ├── SSH Credential Store
 │   │   └── Access Targets:
 │   │       ├── dc1-servers-ssh
-│   │       ├── dc1-clients-ssh  
-│   │       ├── dc1-consul-ui
-│   │       ├── dc1-nomad-ui
-│   │       ├── dc1-grafana
-│   │       └── dc1-prometheus
+│   │       └── dc1-clients-ssh
 │   └── DC2 Development Project (if deployed)
 │       └── Similar target structure
 └── Operations Org
@@ -159,26 +151,16 @@ boundary connect ssh -target-id <dc1-clients-ssh-target-id>
 boundary connect ssh -target-id <target-id> -host-id <specific-host-id>
 ```
 
-### Web UI Access
+### Direct Infrastructure Access
 
-Create secure tunnels to web interfaces:
+For accessing web UIs, use the infrastructure's load balancer endpoints directly or SSH port forwarding:
 
 ```bash
-# Access Consul UI
-boundary connect -target-id <dc1-consul-ui-target-id> -listen-port 8500
-# Then visit: http://localhost:8500
+# SSH with port forwarding for Consul UI
+boundary connect ssh -target-id <dc1-servers-ssh-target-id> -- -L 8500:localhost:8500
 
-# Access Nomad UI
-boundary connect -target-id <dc1-nomad-ui-target-id> -listen-port 4646  
-# Then visit: http://localhost:4646
-
-# Access Grafana
-boundary connect -target-id <dc1-grafana-target-id> -listen-port 3000
-# Then visit: http://localhost:3000
-
-# Access Prometheus  
-boundary connect -target-id <dc1-prometheus-target-id> -listen-port 9090
-# Then visit: http://localhost:9090
+# SSH with port forwarding for Nomad UI  
+boundary connect ssh -target-id <dc1-servers-ssh-target-id> -- -L 4646:localhost:4646
 ```
 
 ### Get Connection Commands
@@ -234,12 +216,7 @@ gcloud compute instances list --filter='name~hashi-clients' --format='value(EXTE
 - Default port: 22
 - Automatic credential injection
 - Session recording (if enabled)
-
-**TCP Targets**: For web UI access via secure tunnels
-- Consul UI: Port 8500
-- Nomad UI: Port 4646  
-- Grafana: Port 3000
-- Prometheus: Port 9090
+- Direct access to servers and clients
 
 ## Security Features
 

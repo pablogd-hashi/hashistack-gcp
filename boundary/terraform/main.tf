@@ -234,7 +234,7 @@ resource "boundary_credential_ssh_private_key" "ssh_key" {
   name                = "hashistack_ssh_key"
   description         = "SSH private key for accessing HashiStack instances"
   credential_store_id = boundary_credential_store_static.ssh_keys[0].id
-  username            = "ubuntu"
+  username            = "debian"
   private_key         = var.ssh_private_key
 }
 
@@ -338,7 +338,7 @@ resource "boundary_target" "dc1_servers_ssh" {
   host_source_ids = [
     boundary_host_set_static.dc1_servers[0].id
   ]
-  brokered_credential_source_ids = [
+  injected_application_credential_source_ids = [
     boundary_credential_ssh_private_key.ssh_key[0].id
   ]
 }
@@ -354,7 +354,7 @@ resource "boundary_target" "dc1_clients_ssh" {
   host_source_ids = [
     boundary_host_set_static.dc1_clients[0].id
   ]
-  brokered_credential_source_ids = [
+  injected_application_credential_source_ids = [
     boundary_credential_ssh_private_key.ssh_key[0].id
   ]
 }
@@ -370,7 +370,7 @@ resource "boundary_target" "dc2_servers_ssh" {
   host_source_ids = [
     boundary_host_set_static.dc2_servers[0].id
   ]
-  brokered_credential_source_ids = [
+  injected_application_credential_source_ids = [
     boundary_credential_ssh_private_key.ssh_key[0].id
   ]
 }
@@ -386,114 +386,9 @@ resource "boundary_target" "dc2_clients_ssh" {
   host_source_ids = [
     boundary_host_set_static.dc2_clients[0].id
   ]
-  brokered_credential_source_ids = [
+  injected_application_credential_source_ids = [
     boundary_credential_ssh_private_key.ssh_key[0].id
   ]
 }
 
-# Create targets for Consul UI access
-resource "boundary_target" "dc1_consul_ui" {
-  count                    = var.dc1_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc1-consul-ui"
-  description              = "Access to DC1 Consul UI (port 8500)"
-  scope_id                 = boundary_scope.dc1_dev[0].id
-  session_connection_limit = -1
-  default_port             = 8500
-  host_source_ids = [
-    boundary_host_set_static.dc1_servers[0].id
-  ]
-}
-
-resource "boundary_target" "dc2_consul_ui" {
-  count                    = var.dc2_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc2-consul-ui"
-  description              = "Access to DC2 Consul UI (port 8500)"
-  scope_id                 = boundary_scope.dc2_dev[0].id
-  session_connection_limit = -1
-  default_port             = 8500
-  host_source_ids = [
-    boundary_host_set_static.dc2_servers[0].id
-  ]
-}
-
-# Create targets for Nomad UI access
-resource "boundary_target" "dc1_nomad_ui" {
-  count                    = var.dc1_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc1-nomad-ui"
-  description              = "Access to DC1 Nomad UI (port 4646)"
-  scope_id                 = boundary_scope.dc1_dev[0].id
-  session_connection_limit = -1
-  default_port             = 4646
-  host_source_ids = [
-    boundary_host_set_static.dc1_servers[0].id
-  ]
-}
-
-resource "boundary_target" "dc2_nomad_ui" {
-  count                    = var.dc2_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc2-nomad-ui"
-  description              = "Access to DC2 Nomad UI (port 4646)"
-  scope_id                 = boundary_scope.dc2_dev[0].id
-  session_connection_limit = -1
-  default_port             = 4646
-  host_source_ids = [
-    boundary_host_set_static.dc2_servers[0].id
-  ]
-}
-
-# Create targets for monitoring access (Grafana, Prometheus)
-resource "boundary_target" "dc1_grafana" {
-  count                    = var.dc1_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc1-grafana"
-  description              = "Access to DC1 Grafana (port 3000)"
-  scope_id                 = boundary_scope.dc1_dev[0].id
-  session_connection_limit = -1
-  default_port             = 3000
-  host_source_ids = [
-    boundary_host_set_static.dc1_clients[0].id
-  ]
-}
-
-resource "boundary_target" "dc1_prometheus" {
-  count                    = var.dc1_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc1-prometheus"
-  description              = "Access to DC1 Prometheus (port 9090)"
-  scope_id                 = boundary_scope.dc1_dev[0].id
-  session_connection_limit = -1
-  default_port             = 9090
-  host_source_ids = [
-    boundary_host_set_static.dc1_clients[0].id
-  ]
-}
-
-resource "boundary_target" "dc2_grafana" {
-  count                    = var.dc2_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc2-grafana"
-  description              = "Access to DC2 Grafana (port 3000)"
-  scope_id                 = boundary_scope.dc2_dev[0].id
-  session_connection_limit = -1
-  default_port             = 3000
-  host_source_ids = [
-    boundary_host_set_static.dc2_clients[0].id
-  ]
-}
-
-resource "boundary_target" "dc2_prometheus" {
-  count                    = var.dc2_deployed ? 1 : 0
-  type                     = "tcp"
-  name                     = "dc2-prometheus"
-  description              = "Access to DC2 Prometheus (port 9090)"
-  scope_id                 = boundary_scope.dc2_dev[0].id
-  session_connection_limit = -1
-  default_port             = 9090
-  host_source_ids = [
-    boundary_host_set_static.dc2_clients[0].id
-  ]
-}
+# UI targets removed - only SSH access to servers and clients
