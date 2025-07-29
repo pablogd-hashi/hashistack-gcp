@@ -1,203 +1,318 @@
-Understood. Here's the **entire `README.md` as a single markdown file**, with **everything fully integrated in one document**—no separations, no repeated sections, fully sequential, and copy-paste ready for your repo:
-
-````markdown
 # HashiCorp Enterprise Stack on Google Cloud Platform
 
-This repository deploys a full HashiCorp enterprise environment on Google Cloud Platform (GCP), using **Consul Enterprise** and **Nomad Enterprise** with built-in security, observability, and optional multi-cluster federation. It leverages **Workload Identity Federation** for secure GCP authentication without static credentials.
+A production-ready deployment of HashiCorp Consul Enterprise and Nomad Enterprise on Google Cloud Platform with monitoring, security, and enterprise features. 
+This repository provides infrastructure-as-code for deploying a complete HashiCorp stack ONLY for demo purposes. Do not do deploy this in Production
 
----
+## What This Repository Deploys
 
-## Overview
+This repository creates a complete HashiCorp enterprise ecosystem on GCP including:
 
-This stack includes most of the HashiCorp ecosystem:
+**Core Infrastructure:**
+- 3 x Consul/Nomad server nodes (combined server architecture)
+- 2-4 x Nomad client nodes for application workloads
+- GCP Load Balancers with DNS integration
 
-- 3x combined **Consul/Nomad Enterprise servers**
-- 2x **Nomad clients** for workload execution
-- **GCP Load Balancers** with optional DNS integration
-- **Workload Identity Federation** for secure cloud auth
-- **Packer** (local or HCP) to build custom images
-- **Consul Enterprise** `1.21.0+ent` with ACLs and TLS
-- **Nomad Enterprise** `1.10.3+ent` with ACLs and secure variables
-- **Consul Connect** for service mesh and L4/L7 zero-trust networking
-- **Consul-Terraform-Sync (CTS)** for automated infra responses
-- [Optional] **Boundary** for secure remote access
-- **Traefik v3**, **Prometheus**, and **Grafana** for observability
-- [Optional] **API Gateway** if using service mesh
+**HashiCorp Services:**
+- Consul Enterprise 1.21.0+ent with ACLs and TLS
+- Nomad Enterprise 1.10.3+ent with ACLs and secure variables
+- Consul Connect service mesh for zero-trust networking
+**Applications and Monitoring:**
+- Traefik v3.0 API Gateway and load balancer
+- Prometheus metrics collection
+- Grafana dashboards and alerting
+- Demo applications (Terramino game, fake services)
 
-> **By default**, only **Grafana**, **Prometheus**, and **Traefik** are deployed via Nomad.  
-> The [Boutique App](https://github.com/GoogleCloudPlatform/microservices-demo) is **only deployed** when using **GKE as an Admin Partition**.
+**Security Features:**
+- Enterprise ACLs for both Consul and Nomad
+- TLS encryption for all HashiCorp services
+- Service mesh with Consul Connect
+- Firewall rules and network segmentation
 
----
+# High Level Architecture
 
-## Requirements
+![HLD](./docs/images/architecture-diagram.png)
 
-### Tools
+## Prerequisites
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) ≥ 1.0  
-- [Packer](https://developer.hashicorp.com/packer/downloads) ≥ 1.8  
-- [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/install)  
-- [kubectl](https://kubernetes.io/docs/tasks/tools/) (only for GKE)  
-- [`task`](https://taskfile.dev/#/installation) (recommended)
+Before deploying this stack, ensure you have:
 
-### GCP Project Setup
+**Required Tools:**
+- Terraform >= 1.0.0
+- Google Cloud SDK (gcloud) authenticated
+- Packer >= 1.8.0 (for custom image builds)
+- kubectl (for GKE components)
+- Task (taskfile) - optional but recommended
 
-- A GCP project with billing enabled
-- Required APIs: Compute, DNS
-- IAM roles: Project Owner or Editor, DNS Admin
-- A service account or Workload Identity with sufficient permissions
+**Required Permissions:**
+- GCP Project Owner or Editor role
+- Ability to create compute instances, networks, and load balancers
+- DNS zone management (if using custom domains)
 
-### Licenses
+**Required Licenses:**
+- Consul Enterprise license
+- Nomad Enterprise license
 
-- Valid Consul Enterprise and Nomad Enterprise licenses
+**GCP Setup:**
+- GCP project with billing enabled
+- Compute Engine API enabled
+- DNS API enabled (if using custom domains)
+- Service account with appropriate permissions
 
----
+## Initial Setup
 
-## Configuration
+### 1. Configure Variable Sets (HCP Terraform) or terraform.auto.tfvars
 
-Create a `terraform.auto.tfvars` or use HCP Terraform variable sets with the following values:
+If using HCP Terraform, create these variable sets:
 
-```hcl
-gcp_project            = "your-gcp-project-id"
-gcp_region             = "europe-north1"
-machine_type_server    = "e2-standard-2"
-machine_type_client    = "e2-standard-4"
-consul_license         = "your-consul-license"
-nomad_license          = "your-nomad-license"
-consul_version         = "1.21.0+ent"
-nomad_version          = "1.10.3+ent"
-ssh_public_key         = "your-ssh-key"
-dns_zone               = "your-dns-zone"  # optional
-cluster_name           = "your-cluster-name"
-enable_acls            = true
-consul_bootstrap_token = "ConsulR0cks"  # change this
-````
+**HashiStack Common Variables:**
+```
+consul_license = "your-consul-enterprise-license"
+nomad_license = "your-nomad-enterprise-license"
+consul_version = "1.21.0+ent"
+nomad_version = "1.10.3+ent"
+consul_bootstrap_token = "ConsulR0cks" # Change in production
+enable_acls = true
+```
 
----
+**GCP Common Variables:**
+```
+gcp_project = "your-gcp-project-id"  
+gcp_region = "europe-north1"
+machine_type_server = "e2-standard-2"
+machine_type_client = "e2-standard-4"
+```
 
-## Build Custom Images
+**Workspace-Specific Variables:**
+```
+ssh_public_key = "your-ssh-public-key"
+dns_zone = "your-dns-zone-name" # Optional
+cluster_name = "your-cluster-name"
+```
 
-Custom images are used for Nomad servers and clients. Use Packer to build images:
+If not using HCP Terraform, create `terraform.auto.tfvars` files in each cluster directory with these variables.
+
+### 2. Build Custom Images (Required)
+
+Build HashiCorp images with Packer before deploying infrastructure:
 
 ```bash
-# If using task
+# Build images for your GCP project
 task build-images
 
-# Or manually
+# Or manually:
 cd packer/gcp
 packer build .
 ```
 
----
+This creates custom images with Consul and Nomad pre-installed and configured.
 
-## Deploy Infrastructure
+### 3. Deploy Infrastructure
 
-You can deploy a single datacenter or a full multi-cluster environment.
+Choose your deployment approach:
 
+**Single Cluster (DC1):**
 ```bash
-# Single DC
 task deploy-dc1
+```
 
-# Multi-Cluster
+**Multi-Cluster (DC1 + DC2):**
+```bash
 task deploy-both
 ```
 
----
-
-## Deploy Applications
-
-Default applications include:
-
-* **Grafana**
-* **Prometheus**
-* **Traefik**
-
-Optional apps:
-
-* [**Boutique App**](https://github.com/GoogleCloudPlatform/microservices-demo): Only available when using GKE + Admin Partition
-* **API Gateway**: Optional if using Consul service mesh
-
-Deployment:
-
+**With Applications:**
 ```bash
+task deploy-dc1
 task deploy-monitoring-dc1
 task deploy-traefik-dc1
 task deploy-demo-apps-dc1
 ```
 
----
+## Functionality Breakdown
 
-## Access Points
+### Multi-Cluster Peering
 
-| Service    | URL                                      |
-| ---------- | ---------------------------------------- |
-| Consul UI  | `http://consul.your-domain.com:8500`     |
-| Nomad UI   | `http://nomad.your-domain.com:4646`      |
-| Grafana    | `http://grafana.your-domain.com:3000`    |
-| Prometheus | `http://prometheus.your-domain.com:9090` |
-| Traefik    | `http://traefik.your-domain.com:8080`    |
-| Demo App   | `http://terramino.your-domain.com`       |
+For federating multiple Consul datacenters with cluster peering:
 
----
+**Documentation:** [`consul/peering/README.md`](consul/peering/README.md)
 
-## Useful Commands
-
+**Quick Start:**
 ```bash
-# Infra lifecycle
-task deploy-dc1
-task deploy-dc2
+# Deploy both clusters first
 task deploy-both
-task destroy-dc1
-task destroy-both
-task status
 
-# Applications
-task deploy-monitoring
-task deploy-traefik
-task deploy-demo-apps
-
-# Node info & debugging
-task get-server-ips
-task ssh-dc1-server
-task show-urls
-task eval-vars
-
-# Peering
+# Setup peering
 task peering:setup
 task peering:establish
-task peering:verify
+task peering:complete
 ```
 
----
+### Admin Partitions (Multi-Tenancy)
+
+For deploying Consul Enterprise admin partitions on GKE:
+
+**Documentation:** [`consul/admin-partitions/README.md`](consul/admin-partitions/README.md)
+
+**Quick Start:**
+```bash
+# Deploy base infrastructure
+task deploy-dc1
+
+# Deploy GKE clusters with admin partitions
+task deploy-all-gke
+task gke-setup-secrets
+task gke-deploy-consul
+```
+
+### Consul Terraform Sync (CTS)
+
+For infrastructure automation with Consul-Terraform-Sync:
+
+**Documentation:** [`consul/cts/README.md`](consul/cts/README.md)
+
+**Features:**
+- Automated DNS updates based on service registration
+- Infrastructure provisioning triggered by service changes
+- Integration with external systems
+
+### Boundary Integration (Optional)
+
+For secure remote access to infrastructure with HashiCorp Boundary:
+
+**Documentation:** [`boundary/README.md`](boundary/README.md)
+
+**Quick Start:**
+```bash
+# Deploy base infrastructure first
+task deploy-dc1
+
+# Configure and deploy Boundary integration
+cd boundary/terraform
+terraform init
+terraform apply
+```
 
 ## Directory Structure
 
-```text
-clusters/
-  dc1/terraform/              # Primary datacenter
-  dc2/terraform/              # Optional second DC
-  gke-*/                      # GKE Admin Partition support
-
-consul/
-  admin-partitions/           # Admin Partition configuration
-  peering/                    # Cluster peering config
-  cts/                        # Consul-Terraform-Sync automation
-
-boundary/                     # Optional Boundary setup
-packer/                       # Packer templates for GCP
-nomad-apps/                   # Nomad job specs
-scripts/                      # Utility scripts
+```
+├── clusters/                    # Infrastructure deployments
+│   ├── dc1/terraform/          # Primary cluster (europe-north1)
+│   ├── dc2/terraform/          # Secondary cluster (europe-central2)
+│   └── gke-*/                  # GKE clusters for admin partitions
+├── consul/                     # Consul-specific configurations
+│   ├── admin-partitions/       # Admin partitions setup
+│   ├── peering/               # Cluster peering configuration
+│   └── cts/                   # Consul-Terraform-Sync
+├── boundary/                   # Boundary integration (optional)
+├── packer/                     # Custom image builds
+├── nomad-apps/                # Nomad job definitions
+└── scripts/                   # Automation and helper scripts
 ```
 
----
+## Common Commands
 
-## Related Links
-
-* [Consul Admin Partitions](https://developer.hashicorp.com/consul/docs/enterprise/admin-partitions)
-* [Consul Cluster Peering](https://developer.hashicorp.com/consul/docs/connect/cluster-peering)
-* [Consul-Terraform-Sync](https://developer.hashicorp.com/consul/docs/integrations/consul-terraform-sync)
-* [Google Cloud Boutique App](https://github.com/GoogleCloudPlatform/microservices-demo)
-
+**Infrastructure Management:**
+```bash
+task deploy-dc1              # Deploy primary cluster
+task deploy-dc2              # Deploy secondary cluster  
+task deploy-both             # Deploy both clusters
+task destroy-dc1             # Destroy primary cluster
+task status                  # Check cluster status
 ```
 
-Let me know if you want this saved to a file or committed to a specific repo.
+**Application Deployment:**
+```bash
+task deploy-monitoring       # Deploy Prometheus + Grafana
+task deploy-traefik         # Deploy Traefik load balancer
+task deploy-demo-apps       # Deploy sample applications
 ```
+
+**Cluster Operations:**
+```bash
+task get-server-ips         # Get instance IP addresses
+task ssh-dc1-server         # SSH to DC1 server
+task show-urls              # Display all service URLs
+task eval-vars              # Show environment variables
+```
+
+**Peering and Federation:**
+```bash
+task peering:setup          # Initialize cluster peering
+task peering:establish      # Create peering connection
+task peering:verify         # Verify peering status
+```
+
+## Access Points
+
+After deployment, services are accessible at:
+
+**HashiCorp UIs:**
+- Consul: `http://consul.your-domain.com:8500` or load balancer IP
+- Nomad: `http://nomad.your-domain.com:4646` or load balancer IP
+
+**Monitoring:**
+- Grafana: `http://grafana.your-domain.com:3000` (admin/admin)
+- Prometheus: `http://prometheus.your-domain.com:9090`
+- Traefik: `http://traefik.your-domain.com:8080`
+
+**Applications:**
+- Terramino Game: `http://terramino.your-domain.com`
+- Demo Services: Various ports on client load balancer
+
+## Security Considerations
+
+**Enterprise Features:**
+- ACLs enabled by default for Consul and Nomad
+- TLS encryption for all inter-service communication
+- Enterprise licenses required for advanced features
+
+**Network Security:**
+- Firewall rules restrict access to necessary ports only
+- Internal communication uses private networks
+- Service mesh provides zero-trust networking
+
+**Secrets Management:**
+- Sensitive variables marked as sensitive in Terraform
+- Nomad secure variables for application secrets
+- Consul ACL tokens for service authentication
+
+## Troubleshooting
+
+**Common Issues:**
+
+1. **License Errors**: Ensure valid enterprise licenses are configured
+2. **Image Not Found**: Run `task build-images` before deployment
+3. **DNS Issues**: Verify DNS zone configuration and permissions
+4. **Connectivity**: Check firewall rules and network configuration
+
+**Useful Commands:**
+```bash
+# Check service status on nodes
+sudo systemctl status consul
+sudo systemctl status nomad
+
+# View service logs
+sudo journalctl -u consul -f
+sudo journalctl -u nomad -f
+
+# Check cluster membership
+consul members
+nomad server members
+nomad node status
+```
+
+**Getting Help:**
+- Check individual README files in each directory for specific functionality
+- Review Terraform outputs for connection information
+- Use `task status` for overall cluster health
+- Examine logs on individual instances for detailed debugging
+
+## Contributing
+
+This repository follows infrastructure-as-code best practices:
+- All changes should be made through Terraform
+- Test changes in development environments first
+- Follow HashiCorp configuration conventions
+- Document new features and configurations
+
+For specific functionality (peering, admin partitions, CTS, boundary), refer to the respective README files in each directory.
