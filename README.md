@@ -2,8 +2,8 @@
 
 ## Overview
 
-A production-ready deployment of HashiCorp Consul Enterprise and Nomad Enterprise on Google Cloud Platform with monitoring, security, and enterprise features. 
-This repository provides infrastructure-as-code for deploying a complete HashiCorp stack ONLY for demo purposes. Do not deploy this in Production.
+A demonstration deployment of HashiCorp Consul Enterprise and Nomad Enterprise on Google Cloud Platform with monitoring, security, and enterprise features. 
+This repository provides infrastructure-as-code for deploying a complete HashiCorp stack ONLY for demo and PoC purposes. Do not deploy this in Production.
 
 ### What This Repository Deploys
 
