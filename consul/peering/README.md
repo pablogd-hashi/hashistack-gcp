@@ -1,6 +1,28 @@
-# Consul Cluster Peering Setup Guide
+# Consul Cluster Peering
 
-This guide provides the correct order of operations to establish cluster peering between DC1 and DC2 after both clusters are deployed.
+Consul cluster peering enables secure service mesh communication between separate Consul datacenters without requiring WAN federation. This configuration establishes peering between DC1 and DC2 clusters, allowing services in one datacenter to discover and communicate with services in another datacenter through encrypted mesh gateways.
+
+## What Cluster Peering Provides
+
+**Cross-Datacenter Service Mesh:**
+- Secure service-to-service communication across datacenters
+- Service discovery across peered clusters
+- Zero-trust networking with mutual TLS
+- Traffic management and load balancing
+
+**Operational Benefits:**
+- Independent cluster lifecycle management
+- Fault isolation between datacenters
+- Selective service sharing between clusters
+- Simplified network architecture compared to WAN federation
+
+**Enterprise Features:**
+- Advanced traffic policies and routing
+- Sameness groups for automated failover
+- Comprehensive audit logging and monitoring
+- Integration with service mesh observability
+
+This guide provides the step-by-step process to establish cluster peering between DC1 and DC2 after both clusters are deployed.
 
 ## Prerequisites
 
@@ -263,7 +285,7 @@ consul connect proxy-config [SERVICE_NAME]
 ## Load Balancer Access
 
 If DNS is configured, services are accessible via:
-- **Frontend (via API Gateway)**: `http://api-gateway-dc1.[domain]:8081`
+- **Frontend (via API Gateway)**: `http://api-gateway-dc1.your-domain:8081`
 - **Direct access**: Use load balancer IP from terraform outputs
 
 ## Notes

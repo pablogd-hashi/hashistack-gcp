@@ -8,6 +8,14 @@ terraform {
       source = "hashicorp/consul"
       version = "2.20.0"
     }
+    boundary = {
+      source  = "hashicorp/boundary"
+      version = "~> 1.1.0"
+    }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
   }
 }
 

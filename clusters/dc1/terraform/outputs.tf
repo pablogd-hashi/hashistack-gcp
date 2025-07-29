@@ -91,6 +91,35 @@ output "client_nodes" {
 }
 
 # ============================================================================
+# INSTANCE IP ADDRESSES
+# ============================================================================
+
+# Get actual instance IPs for Boundary integration using external data source
+data "external" "server_ips" {
+  program = ["bash", "-c", <<-EOT
+    ips=$(gcloud compute instances list --filter='name~hashi-server' --project='${var.gcp_project}' --format='value(networkInterfaces[0].accessConfigs[0].natIP)' | tr '\n' ',' | sed 's/,$//')
+    echo "{\"servers\": \"$ips\"}"
+  EOT
+  ]
+}
+
+data "external" "client_ips" {
+  program = ["bash", "-c", <<-EOT
+    ips=$(gcloud compute instances list --filter='name~hashi-clients' --project='${var.gcp_project}' --format='value(networkInterfaces[0].accessConfigs[0].natIP)' | tr '\n' ',' | sed 's/,$//')
+    echo "{\"clients\": \"$ips\"}"
+  EOT
+  ]
+}
+
+output "instance_ips" {
+  description = "Instance IP addresses for external integrations"
+  value = {
+    servers = split(",", data.external.server_ips.result.servers)
+    clients = split(",", data.external.client_ips.result.clients)
+  }
+}
+
+# ============================================================================
 # AUTHENTICATION TOKENS
 # ============================================================================
 

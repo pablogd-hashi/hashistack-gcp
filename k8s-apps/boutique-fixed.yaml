@@ -1,0 +1,117 @@
+# Google Microservices Demo (Boutique Shop) - FIXED VERSION
+# Enhanced for Consul Service Mesh in k8s-west1 admin partition, development namespace
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: development
+  labels:
+    name: development
+    consul.hashicorp.com/partition: k8s-west1
+
+---
+# Email Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emailservice
+  namespace: development
+spec:
+  selector:
+    matchLabels:
+      app: emailservice
+  template:
+    metadata:
+      labels:
+        app: emailservice
+      annotations:
+        consul.hashicorp.com/connect-inject: 'true'
+        consul.hashicorp.com/partition: 'k8s-west1'
+        consul.hashicorp.com/namespace: 'development'
+        consul.hashicorp.com/service-tags: 'v1,email'
+    spec:
+      serviceAccountName: emailservice
+      containers:
+      - name: server
+        image: gcr.io/google-samples/microservices-demo/emailservice:v0.8.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: emailservice
+  namespace: development
+spec:
+  type: ClusterIP
+  selector:
+    app: emailservice
+  ports:
+  - name: grpc
+    protocol: TCP
+    port: 5000
+    targetPort: 8080
+
+---
+# Frontend Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: development
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+      annotations:
+        consul.hashicorp.com/connect-inject: 'true'
+        consul.hashicorp.com/partition: 'k8s-west1'
+        consul.hashicorp.com/namespace: 'development'
+        consul.hashicorp.com/service-tags: 'v1,frontend,web'
+    spec:
+      serviceAccountName: frontend
+      containers:
+      - name: server
+        image: gcr.io/google-samples/microservices-demo/frontend:v0.8.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: "productcatalogservice:3550"
+        - name: CURRENCY_SERVICE_ADDR
+          value: "currencyservice:7000"
+        - name: CART_SERVICE_ADDR
+          value: "cartservice:7070"
+        - name: RECOMMENDATION_SERVICE_ADDR
+          value: "recommendationservice:8080"
+        - name: SHIPPING_SERVICE_ADDR
+          value: "shippingservice:50051"
+        - name: CHECKOUT_SERVICE_ADDR
+          value: "checkoutservice:5050"
+        - name: AD_SERVICE_ADDR
+          value: "adservice:9555"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: development
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8080

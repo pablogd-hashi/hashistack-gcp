@@ -1,0 +1,20 @@
+# Auto-generated firewall rules by CTS
+# Generated at: ${timestamp()}
+
+%{ for name, service in services ~}
+resource "google_compute_firewall" "auto_${replace(service.name, "-", "_")}_${service.port}" {
+  name    = "auto-${service.name}-${service.port}"
+  network = "gke-southwest-gke-network"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["${service.port}"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["gke-node"]
+  
+  description = "CTS auto-created: ${service.name} on port ${service.port}"
+}
+
+%{ endfor ~}

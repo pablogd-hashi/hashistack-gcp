@@ -1,0 +1,151 @@
+# Consul Helm Values for GKE Europe West1 Cluster
+# Admin Partition: k8s-west1
+# This connects to DC1/DC2 HashiStack cluster as an admin partition client
+
+global:
+  enabled: true
+  name: consul
+  datacenter: gcp-dc1
+  image: hashicorp/consul-enterprise:1.21.0-ent
+  imageK8S: hashicorp/consul-k8s-control-plane:1.6.2
+  logLevel: info
+  
+  # Admin Partitions Configuration - West1 Partition
+  adminPartitions:
+    enabled: true
+    name: "k8s-west1"  # Primary west region partition
+  
+  # Enterprise License (you'll need to create this secret)
+  enterpriseLicense:
+    secretName: consul-ent-license
+    secretKey: key
+    
+  # TLS Configuration
+  tls:
+    enabled: true
+    enableAutoEncrypt: true
+    verify: false  # Set to false for testing, true for production
+    caCert:
+      secretName: consul-ca-cert
+      secretKey: tls.crt
+    caKey:
+      secretName: consul-ca-key  
+      secretKey: tls.key
+      
+  # ACL Configuration
+  acls:
+    manageSystemACLs: true
+    bootstrapToken:
+      secretName: consul-bootstrap-token
+      secretKey: token
+      
+  # Consul Namespaces (Enterprise feature)
+  enableConsulNamespaces: true
+  
+  # Peering Configuration (requires TLS)
+  peering:
+    enabled: true
+    
+  # Metrics
+  metrics:
+    enabled: true
+    enableGatewayMetrics: true
+
+# External Servers Configuration (your DC1/DC2 cluster)
+# Replace these with actual server IPs from: terraform output -json server_nodes
+externalServers:
+  enabled: true
+  hosts:
+    # DC1 Server IPs - Updated with actual IPs
+    - "35.228.141.54"
+    - "34.88.127.228"
+    - "34.88.68.151"
+  tlsServerName: server.gcp-dc1.consul
+  k8sAuthMethodHost: "https://34.175.89.146"
+
+# Server Configuration (disabled since we're connecting to external)
+server:
+  enabled: false
+
+# Client Configuration
+client:
+  enabled: false  # We're using external servers
+  grpc: true
+
+# Connect Inject Configuration  
+connectInject:
+  enabled: true
+  transparentProxy:
+    defaultEnabled: true
+  consulNamespaces:
+    mirroringK8S: true
+  # Default namespace annotations for DTAP environments
+  k8sAllowNamespaces: ["*"]
+  k8sDenyNamespaces: ["kube-system", "kube-public", "kube-node-lease"]
+
+# Controller
+controller:
+  enabled: true
+
+# DNS Configuration
+dns:
+  enabled: true
+  enableRedirection: true
+  proxy:
+    enabled: true
+    aclToken:
+      secretName: consul-dns-token
+      secretKey: token
+
+# Mesh Gateway (for cross-partition communication)
+meshGateway:
+  enabled: true
+  replicas: 1
+  enableHealthChecks: false
+  service:
+    enabled: true
+    type: LoadBalancer  # Use NodePort if LoadBalancer unavailable
+
+# Terminating Gateways (for external service integration)
+terminatingGateways:
+  enabled: true
+  defaults:
+    replicas: 1
+
+# Ingress Gateways (for inbound traffic)
+ingressGateways:
+  enabled: false  # Enable if needed for ingress traffic
+
+# Additional West1-specific configuration
+ui:
+  enabled: false  # UI disabled for partition clients
+
+# West1-specific resource limits
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi" 
+    cpu: "500m"
+
+# DTAP Environment Support
+# Use these annotations in your application deployments:
+# 
+# For Development environment:
+# annotations:
+#   consul.hashicorp.com/connect-inject: "true"
+#   consul.hashicorp.com/connect-service: "frontend-dev"
+#   consul.hashicorp.com/connect-service-namespace: "frontend-dev"
+#
+# For Staging environment:
+# annotations:
+#   consul.hashicorp.com/connect-inject: "true"
+#   consul.hashicorp.com/connect-service: "frontend-staging"
+#   consul.hashicorp.com/connect-service-namespace: "frontend-staging"
+#
+# For Production environment:
+# annotations:
+#   consul.hashicorp.com/connect-inject: "true"
+#   consul.hashicorp.com/connect-service: "frontend-prod"
+#   consul.hashicorp.com/connect-service-namespace: "frontend-prod"

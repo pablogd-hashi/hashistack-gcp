@@ -1,0 +1,18 @@
+# Example Boundary configuration for DC1 cluster
+# Copy this to your terraform.auto.tfvars and update with your values
+
+# Boundary Configuration
+enable_boundary = true
+create_boundary_orgs = true  # DC1 creates the organizational scopes
+boundary_environment = "development"  # or "production"
+
+# HCP Boundary connection details (get these from your HCP Boundary cluster)
+boundary_addr = "https://your-boundary-cluster-id.boundary.hashicorp.cloud"
+boundary_auth_method_id = "ampw_xxxxxxxxxx"
+boundary_admin_login_name = "your-username"
+# boundary_admin_password is set via environment variable: export TF_VAR_boundary_admin_password="your-password"
+
+# SSH Configuration
+ssh_username = "debian"  # Default username for GCP instances
+
+# Note: ssh_private_key should already be set in your existing configuration

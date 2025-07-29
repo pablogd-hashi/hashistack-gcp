@@ -1,6 +1,22 @@
-# Admin Partitions Demo - Step-by-Step Deployment Guide
+# Consul Enterprise Admin Partitions
 
-This guide provides a complete procedure for setting up Consul Enterprise admin partitions with multi-environment namespaces and demo applications.
+Consul Enterprise admin partitions provide multi-tenant isolation within a single Consul datacenter. This configuration deploys Consul Enterprise on Google Kubernetes Engine (GKE) with separate partitions for different environments and teams, while maintaining secure service mesh connectivity across partitions.
+
+## What Admin Partitions Provide
+
+**Multi-Tenant Isolation:**
+- Complete administrative boundaries between teams/environments
+- Separate ACL policies and tokens per partition
+- Isolated service mesh and networking policies
+- Independent upgrade and maintenance cycles
+
+**Cross-Partition Connectivity:**
+- Secure service mesh communication across partitions
+- Centralized service discovery and routing
+- Shared Consul servers with distributed agents
+- Enterprise-grade security and compliance features
+
+This deployment demonstrates a real-world scenario with development, testing, acceptance, and production environments isolated in separate partitions.
 
 ## 🎯 Demo Architecture
 
