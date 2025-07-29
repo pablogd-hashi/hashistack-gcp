@@ -94,37 +94,7 @@ nomad run -var datacenter=gcp-dc1 mesh-gateway.hcl  # On DC1
 nomad run -var datacenter=gcp-dc2 mesh-gateway.hcl  # On DC2
 ```
 
-### Phase 5: Configure Service Mesh
-
-Execute on **both DC1 and DC2**:
-
-```bash
-# Configure proxy defaults
-consul config write configs/proxy-defaults.hcl
-
-# Configure mesh connectivity
-consul config write configs/mesh.hcl
-```
-
-### Phase 5: Deploy Backend Services (DC2 Only)
-
-Execute on **DC2 only**:
-
-```bash
-# Deploy backend services
-nomad run -var datacenter=gcp-dc2 -var replicas_public=2 -var replicas_private=2 ../../nomad-apps/demo-fake-service/backend.nomad.hcl
-```
-
-### Phase 6: Deploy Frontend Service (DC1 Only)
-
-Execute on **DC1 only**:
-
-```bash
-# Deploy frontend service
-nomad run -var datacenter=gcp-dc1 ../../nomad-apps/demo-fake-service/frontend.nomad.hcl
-```
-
-### Phase 7: Establish Cluster Peering
+### Phase 5: Establish Cluster Peering
 
 Execute on **DC1** (create peering connection):
 
@@ -142,7 +112,7 @@ Execute on **DC2** (accept peering):
 consul peering establish -name gcp-dc1-default -peering-token "TOKEN_FROM_DC1"
 ```
 
-### Phase 8: Configure Service Exports
+### Phase 6: Configure Service Exports
 
 Execute on **DC2** (export services to DC1):
 
@@ -151,7 +121,41 @@ Execute on **DC2** (export services to DC1):
 consul config write default-exported.hcl
 ```
 
-### Phase 9: Configure Service Intentions
+## Optional: Application Deployment and Configuration
+
+**Note**: The following phases are optional and only needed if you want to deploy and test applications with cross-cluster communication.
+
+### Phase 7: Configure Service Mesh
+
+Execute on **both DC1 and DC2**:
+
+```bash
+# Configure proxy defaults
+consul config write configs/proxy-defaults.hcl
+
+# Configure mesh connectivity
+consul config write configs/mesh.hcl
+```
+
+### Phase 8: Deploy Backend Services (DC2 Only)
+
+Execute on **DC2 only**:
+
+```bash
+# Deploy backend services
+nomad run -var datacenter=gcp-dc2 -var replicas_public=2 -var replicas_private=2 ../../nomad-apps/demo-fake-service/backend.nomad.hcl
+```
+
+### Phase 9: Deploy Frontend Service (DC1 Only)
+
+Execute on **DC1 only**:
+
+```bash
+# Deploy frontend service
+nomad run -var datacenter=gcp-dc1 ../../nomad-apps/demo-fake-service/frontend.nomad.hcl
+```
+
+### Phase 10: Configure Service Intentions
 
 Execute on **DC1**:
 
@@ -170,7 +174,7 @@ consul config write configs/intentions/private-api-intentions.hcl
 consul config write configs/intentions/public-api-intentions.hcl
 ```
 
-### Phase 10: Deploy API Gateway (DC1 Only)
+### Phase 11: Deploy API Gateway (DC1 Only)
 
 Execute on **DC1 only**:
 
@@ -188,7 +192,7 @@ consul config write configs/api-gateway/httproute.hcl
 consul config write configs/intentions/front-intentions.hcl
 ```
 
-### Phase 11: Configure Service Defaults (Optional)
+### Phase 12: Configure Service Defaults (Optional)
 
 Execute on **both DC1 and DC2** if needed:
 
@@ -199,7 +203,7 @@ consul config write configs/servicedefaults/service-defaults-private-api.hcl
 consul config write configs/servicedefaults/service-defaults-public-api.hcl
 ```
 
-### Phase 12: Configure Failover (Choose One Option)
+### Phase 13: Configure Failover (Choose One Option)
 
 **Option A: Service Resolvers**
 
