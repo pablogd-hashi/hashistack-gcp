@@ -130,6 +130,21 @@ task deploy-traefik-dc1
 task deploy-demo-apps-dc1
 ```
 
+### 4. Configure Nomad-Consul Integration (Required for Multi-Cluster)
+
+After deploying both clusters, configure Nomad workload identity on each cluster:
+
+**Execute on both DC1 and DC2 servers:**
+```bash
+# SSH to each cluster's server nodes
+task ssh-dc1-server  # or task ssh-dc2-server
+
+# Configure Nomad workload identity with Consul
+nomad setup consul -y
+```
+
+This step is **required** before setting up cluster peering or deploying applications that use service mesh features.
+
 ## Functionality Breakdown
 
 ### Multi-Cluster Peering

@@ -35,14 +35,11 @@ This guide provides the step-by-step process to establish cluster peering betwee
 
 ## How to run in tasks
 
-### Phase 1: Configure Nomad-Consul Integration
+### Phase 1: Prerequisites
 
-Execute on **both DC1 and DC2**:
+**Important**: Before starting cluster peering, ensure you have completed the Nomad-Consul integration step from the main README. This configures Nomad workload identity on both clusters.
 
-```bash
-# Configure Nomad workload identity
-nomad setup consul -y
-```
+See: [Main README - Configure Nomad-Consul Integration](../../README.md#4-configure-nomad-consul-integration-required-for-multi-cluster)
 
 ### Phase 2: Create Nomad Namespace (DC1 Only)
 
