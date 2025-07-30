@@ -1,0 +1,187 @@
+version: '3'
+
+vars:
+  CTS_DIR: ../consul/cts
+  DC1_DIR: ../clusters/dc1/terraform
+  DC2_DIR: ../clusters/dc2/terraform
+
+tasks:
+  help:
+    desc: "Show Consul Terraform Sync setup guide"
+    cmds:
+      - echo "🔄 === CONSUL TERRAFORM SYNC (CTS) ==="
+      - echo ""
+      - echo "Network Infrastructure Automation (NIA) using Consul Terraform Sync"
+      - echo ""
+      - echo "📋 PREREQUISITES -"
+      - echo "  ✅ DC1 and/or DC2 clusters deployed"
+      - echo "  ✅ Consul Enterprise running with services registered"
+      - echo "  ✅ Terraform Cloud workspace or local Terraform setup"
+      - echo "  ✅ Valid Consul ACL token with appropriate permissions"
+      - echo ""
+      - echo "📖 DOCUMENTATION - consul/cts/README.md"
+      - echo ""
+      - echo "🚀 SETUP TASKS -"
+      - echo "  configure     - Configure CTS variables and connection"
+      - echo "  deploy        - Deploy CTS daemon"
+      - echo "  status        - Show CTS deployment status"
+      - echo "  validate      - Validate CTS configuration"
+      - echo ""
+      - echo "🔧 OPERATIONAL TASKS -"
+      - echo "  list-tasks    - List all CTS tasks"
+      - echo "  show-modules  - Show available Terraform modules"
+      - echo "  sync-status   - Show sync status of all tasks"
+      - echo "  logs          - Show CTS daemon logs"
+      - echo ""
+      - echo "🗑️  CLEANUP -"
+      - echo "  cleanup       - Remove CTS deployment"
+      - echo ""
+      - echo "📖 QUICK START -"
+      - echo "  1. Configure consul/cts/config/consul-terraform-sync.hcl"
+      - echo "  2. task -t tasks/cts.yml deploy"
+
+  configure:
+    desc: "Configure CTS variables and connection"
+    cmds:
+      - echo "⚙️  Configuring Consul Terraform Sync..."
+      - echo ""
+      - echo "Edit consul/cts/config/consul-terraform-sync.hcl with -"
+      - echo ""
+      - echo "# Consul Connection"
+      - echo "consul {"
+      - echo "  address = \"http://CONSUL_SERVER_IP:8500\""
+      - echo "  token   = \"YOUR_CONSUL_ACL_TOKEN\""
+      - echo "}"
+      - echo ""
+      - echo "# Terraform Configuration"
+      - echo "terraform {"
+      - echo "  log         = true"
+      - echo "  path        = \"/opt/terraform\""
+      - echo "  working_dir = \"/opt/consul-terraform-sync\""
+      - echo "}"
+      - echo ""
+      - echo "# Example Task"
+      - echo "task {"
+      - echo "  name           = \"web-service-firewall\""
+      - echo "  description    = \"Update firewall rules for web services\""
+      - echo "  source         = \"mitchellh/firewall/consul-terraform-sync\""
+      - echo "  services       = [\"web\", \"api\"]"
+      - echo "  variable_files = [\"/opt/cts/variables.tfvars\"]"
+      - echo "}"
+      - echo ""
+      - echo "📖 See - consul/cts/README.md for complete configuration"
+
+  deploy:
+    desc: "Deploy CTS daemon"
+    cmds:
+      - echo "🚀 Deploying Consul Terraform Sync..."
+      - echo "This step requires manual execution on a server node"
+      - echo ""
+      - echo "See - consul/cts/README.md - Phase 2 Deploy CTS"
+      - echo ""
+      - echo "1. SSH to server - task ssh-dc1-server"
+      - echo "2. Copy configuration files to /opt/consul-terraform-sync/"
+      - echo "3. Start CTS daemon - consul-terraform-sync start -config-file=/opt/consul-terraform-sync/consul-terraform-sync.hcl"
+      - echo "4. Verify deployment - task -t tasks/cts.yml status"
+
+  status:
+    desc: "Show CTS deployment status"
+    cmds:
+      - echo "📊 Consul Terraform Sync Status -"
+      - echo ""
+      - echo "Run these commands on the CTS server to check status -"
+      - echo ""
+      - echo "# Check CTS daemon status"
+      - echo "systemctl status consul-terraform-sync"
+      - echo ""
+      - echo "# Check CTS API health"
+      - echo "curl -X GET localhost:8558/v1/status"
+      - echo ""
+      - echo "# List all tasks"
+      - echo "curl -X GET localhost:8558/v1/tasks"
+      - echo ""
+      - echo "Expected - CTS daemon running and API responding"
+
+  validate:
+    desc: "Validate CTS configuration"
+    cmds:
+      - echo "✅ Validating CTS configuration..."
+      - echo "Run this command on the CTS server -"
+      - echo ""
+      - echo "consul-terraform-sync -config-file=/opt/consul-terraform-sync/consul-terraform-sync.hcl -inspect"
+      - echo ""
+      - echo "This will validate configuration without starting the daemon"
+
+  list-tasks:
+    desc: "List all CTS tasks"
+    cmds:
+      - echo "📋 Listing CTS tasks..."
+      - echo "Run this command on the CTS server -"
+      - echo ""
+      - echo "curl -X GET localhost:8558/v1/tasks | jq"
+      - echo ""
+      - echo "Or check the CTS logs for task information"
+
+  show-modules:
+    desc: "Show available Terraform modules for CTS"
+    cmds:
+      - echo "📦 Available CTS Terraform Modules -"
+      - echo ""
+      - echo "Popular modules from Terraform Registry -"
+      - echo "- findkim/loadbalancer/consul-terraform-sync"
+      - echo "- mitchellh/firewall/consul-terraform-sync"
+      - echo "- joestump/digitalocean-firewall/consul-terraform-sync"
+      - echo "- cisco-apjc-cloud-se/bigip-waf/consul-terraform-sync"
+      - echo ""
+      - echo "🔗 Browse more - https://registry.terraform.io/browse/modules?provider=consul-terraform-sync"
+
+  sync-status:
+    desc: "Show sync status of all tasks"
+    cmds:
+      - echo "🔄 Checking CTS task sync status..."
+      - echo "Run these commands on the CTS server -"
+      - echo ""
+      - echo "# Overall status"
+      - echo "curl -X GET localhost:8558/v1/status | jq"
+      - echo ""
+      - echo "# Individual task status"
+      - echo "curl -X GET localhost:8558/v1/tasks/TASK_NAME/status | jq"
+      - echo ""
+      - echo "Replace TASK_NAME with your actual task name"
+
+  logs:
+    desc: "Show CTS daemon logs"
+    cmds:
+      - echo "📝 Viewing CTS daemon logs..."
+      - echo "Run these commands on the CTS server -"
+      - echo ""
+      - echo "# System logs (if running as service)"
+      - echo "journalctl -u consul-terraform-sync -f"
+      - echo ""
+      - echo "# Application logs (if specified in config)"
+      - echo "tail -f /var/log/consul-terraform-sync.log"
+      - echo ""
+      - echo "# Debug mode logs"
+      - echo "consul-terraform-sync -config-file=/opt/consul-terraform-sync/consul-terraform-sync.hcl -log-level=DEBUG"
+
+  cleanup:
+    desc: "Remove CTS deployment"
+    cmds:
+      - echo "🗑️  Cleaning up Consul Terraform Sync..."
+      - echo "Run these commands on the CTS server -"
+      - echo ""
+      - echo "# Stop CTS daemon"
+      - echo "systemctl stop consul-terraform-sync"
+      - echo ""
+      - echo "# Disable service"
+      - echo "systemctl disable consul-terraform-sync"
+      - echo ""
+      - echo "# Remove configuration files"
+      - echo "rm -rf /opt/consul-terraform-sync"
+      - echo ""
+      - echo "⚠️  This will stop all network infrastructure automation"
+
+  default:
+    desc: "Show help by default"
+    cmds:
+      - task: help

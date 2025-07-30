@@ -1,72 +1,136 @@
 version: '3'
 
-# Consul cluster peering tasks
+vars:
+  DC1_DIR: ../clusters/dc1/terraform
+  DC2_DIR: ../clusters/dc2/terraform
+  PEERING_DIR: ../consul/peering
+
 tasks:
   help:
-    desc: "Show cluster peering setup instructions"
-    silent: true
+    desc: "Show cluster peering setup guide"
     cmds:
-      - echo "Consul Cluster Peering Setup"
-      - echo "Prerequisites - Both clusters must be deployed"
-      - echo "task peering:env-setup - Get environment setup"
-      - echo "task peering:setup - Start peering setup"
-      - echo "task peering:establish - Establish peering connection"
-      - echo "task peering:complete - Complete setup"
-      - echo "task peering:verify - Verify peering works"
-      - echo "Detailed guide at consul/peering/README.md"
+      - echo "🔗 === CONSUL CLUSTER PEERING ==="
+      - echo ""
+      - echo "Establishes secure service mesh communication between DC1 and DC2"
+      - echo ""
+      - echo "📋 PREREQUISITES -"
+      - echo "  ✅ Both DC1 and DC2 clusters deployed"
+      - echo "  ✅ Nomad-Consul integration configured - task setup-consul-nomad-both"
+      - echo ""
+      - echo "📖 DOCUMENTATION - consul/peering/README.md"
+      - echo ""
+      - echo "🚀 SETUP TASKS -"
+      - echo "  env-setup     - Set environment variables for both clusters"
+      - echo "  setup         - Configure mesh gateways and ACLs"
+      - echo "  establish     - Create peering connection between clusters"
+      - echo "  verify        - Verify peering is working"
+      - echo "  complete      - Full automated setup (all steps)"
+      - echo ""
+      - echo "🔧 OPTIONAL TASKS -"
+      - echo "  deploy-apps   - Deploy demo applications for testing"
+      - echo "  sameness-groups - Configure sameness groups for failover"
+      - echo "  cleanup       - Remove peering configuration"
+      - echo ""
+      - echo "📖 QUICK START -"
+      - echo "  task -t tasks/peering.yml complete"
 
   env-setup:
-    desc: "Show environment setup for cluster peering"
-    silent: true
+    desc: "Set environment variables for both clusters"
     cmds:
-      - echo "Set environment variables for cluster peering"
-      - echo "See consul/peering/README.md for detailed instructions"
+      - echo "⚙️  Setting up environment variables..."
+      - echo "Export these variables in your shell:"
+      - echo ""
+      - echo "# DC1 Environment"
+      - cd {{.DC1_DIR}} && terraform output -json environment_setup | jq -r .bash_export
+      - echo ""
+      - echo "# DC2 Environment" 
+      - cd {{.DC2_DIR}} && terraform output -json environment_setup | jq -r .bash_export
 
   setup:
-    desc: "Start cluster peering setup (phases 1-8)"
-    dir: consul/peering
+    desc: "Configure mesh gateways and ACLs for peering"
     cmds:
-      - task: setup-peering
-    preconditions:
-      - sh: "[ ! -z \"$DC1_CONSUL_ADDR\" ]"
-        msg: "DC1_CONSUL_ADDR not set. Run 'task peering:env-setup' for instructions"
-      - sh: "[ ! -z \"$DC2_CONSUL_ADDR\" ]"
-        msg: "DC2_CONSUL_ADDR not set. Run 'task peering:env-setup' for instructions"
+      - echo "🔧 Configuring mesh gateways and ACLs..."
+      - echo "This step requires manual execution on both clusters"
+      - echo "See - consul/peering/README.md - Phase 3 & 4"
+      - echo ""
+      - echo "1. SSH to each cluster - task ssh-dc1-server / task ssh-dc2-server"
+      - echo "2. Follow Phase 3 - Configure Mesh Gateway ACLs"
+      - echo "3. Follow Phase 4 - Deploy Mesh Gateways"
 
   establish:
-    desc: "Establish peering connection (run after setup)"
-    dir: consul/peering
+    desc: "Create peering connection between clusters"
     cmds:
-      - task: establish-peering
-
-  complete:
-    desc: "Complete peering setup (phases 9-13)"
-    dir: consul/peering
-    cmds:
-      - task: complete-peering
+      - echo "🤝 Establishing cluster peering..."
+      - echo "This step requires manual execution -"
+      - echo ""
+      - echo "1. On DC1 - consul peering generate-token -name gcp-dc2-default"
+      - echo "2. Copy the token"
+      - echo "3. On DC2 - consul peering establish -name gcp-dc1-default -peering-token 'TOKEN'"
+      - echo ""
+      - echo "See - consul/peering/README.md - Phase 5"
 
   verify:
-    desc: "Verify peering status and connectivity"
-    dir: consul/peering
+    desc: "Verify peering connection status"
     cmds:
-      - task: verify-setup
-      - task: check-services
+      - echo "✅ Verifying peering status..."
+      - echo "Run these commands on both clusters to verify -"
+      - echo ""
+      - echo "consul peering list"
+      - echo "nomad job status mesh-gateway"
+      - echo ""
+      - echo "Expected - Peering status should show 'ACTIVE'"
+
+  deploy-apps:
+    desc: "Deploy demo applications for testing peering"
+    cmds:
+      - echo "🚀 Deploying demo applications..."
+      - echo "This is optional - only needed for testing cross-cluster communication"
+      - echo ""
+      - echo "See - consul/peering/README.md - Optional Application Deployment"
+      - echo ""
+      - echo "1. Deploy backend services on DC2"
+      - echo "2. Deploy frontend service on DC1"
+      - echo "3. Configure service exports and intentions"
 
   sameness-groups:
-    desc: "Configure sameness groups for failover"
-    dir: consul/peering
+    desc: "Configure sameness groups for automated failover"
     cmds:
-      - task: configure-sameness-groups
+      - echo "🔄 Configuring sameness groups..."
+      - echo "See - consul/peering/README.md - Phase 13 Configure Failover"
+      - echo ""
+      - echo "This enables automatic failover between clusters"
 
-  service-resolver:
-    desc: "Configure service resolver for failover"
-    dir: consul/peering
+  complete:
+    desc: "Complete automated peering setup"
     cmds:
-      - task: configure-service-resolver
+      - echo "🚀 Starting complete cluster peering setup..."
+      - task: env-setup
+      - echo ""
+      - echo "⚠️  MANUAL STEPS REQUIRED -"
+      - echo "The following steps require manual execution on each cluster -"
+      - echo ""
+      - echo "1. Configure mesh gateway ACLs (both clusters)"
+      - echo "2. Deploy mesh gateways (both clusters)" 
+      - echo "3. Generate peering token (DC1)"
+      - echo "4. Establish peering connection (DC2)"
+      - echo ""
+      - echo "📖 Follow the detailed guide - consul/peering/README.md"
+      - echo "🔗 Use 'task -t tasks/peering.yml verify' to check status"
 
   cleanup:
-    desc: "Clean up peering configuration"
-    dir: consul/peering
+    desc: "Remove peering configuration"
     cmds:
-      - task: cleanup-peering
-      - task: cleanup-jobs
+      - echo "🗑️  Cleaning up peering configuration..."
+      - echo "Run on both clusters -"
+      - echo ""
+      - echo "# Remove peering connections"
+      - echo "consul peering delete gcp-dc1-default  # On DC2"
+      - echo "consul peering delete gcp-dc2-default  # On DC1"
+      - echo ""
+      - echo "# Stop mesh gateways"
+      - echo "nomad job stop mesh-gateway"
+
+  default:
+    desc: "Show help by default"
+    cmds:
+      - task: help

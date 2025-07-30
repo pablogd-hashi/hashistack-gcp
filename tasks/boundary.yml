@@ -1,0 +1,156 @@
+version: '3'
+
+vars:
+  BOUNDARY_DIR: ../boundary/terraform
+  DC1_DIR: ../clusters/dc1/terraform
+  DC2_DIR: ../clusters/dc2/terraform
+
+tasks:
+  help:
+    desc: "Show Boundary integration setup guide"
+    cmds:
+      - echo "🛡️  === HASHICORP BOUNDARY INTEGRATION ==="
+      - echo ""
+      - echo "Secure, authenticated remote access to HashiStack infrastructure"
+      - echo ""
+      - echo "📋 PREREQUISITES -"
+      - echo "  ✅ DC1 and/or DC2 clusters deployed"
+      - echo "  ✅ HCP Boundary cluster or self-managed Boundary"
+      - echo "  ✅ Valid SSH private key for instance access"
+      - echo "  ✅ Boundary admin credentials"
+      - echo ""
+      - echo "📖 DOCUMENTATION - boundary/README.md"
+      - echo ""
+      - echo "🚀 SETUP TASKS -"
+      - echo "  configure     - Configure Boundary variables"
+      - echo "  deploy        - Deploy Boundary integration"
+      - echo "  status        - Show Boundary deployment status"
+      - echo "  test          - Test SSH connections through Boundary"
+      - echo ""
+      - echo "🔗 ACCESS TASKS -"
+      - echo "  connect-dc1   - Connect to DC1 servers via Boundary"
+      - echo "  connect-dc2   - Connect to DC2 servers via Boundary"
+      - echo "  list-targets  - List all available targets"
+      - echo ""
+      - echo "🗑️  CLEANUP -"
+      - echo "  cleanup       - Remove Boundary integration"
+      - echo ""
+      - echo "📖 QUICK START -"
+      - echo "  1. Configure boundary/terraform/terraform.auto.tfvars"
+      - echo "  2. task -t tasks/boundary.yml deploy"
+
+  configure:
+    desc: "Configure Boundary integration variables"
+    cmds:
+      - echo "⚙️  Configuring Boundary integration..."
+      - echo ""
+      - echo "Edit boundary/terraform/terraform.auto.tfvars with -"
+      - echo ""
+      - echo "# HCP Boundary Configuration"
+      - echo "hcp_boundary_cluster_id = \"your-boundary-cluster-id\""
+      - echo "boundary_addr = \"https://your-cluster.boundary.hashicorp.cloud\""
+      - echo "boundary_auth_method_id = \"your-auth-method-id\""
+      - echo "boundary_admin_login_name = \"your-admin-username\""
+      - echo ""
+      - echo "# Deployment Configuration"
+      - echo "dc1_deployed = true"
+      - echo "dc2_deployed = false  # Set to true if DC2 is deployed"
+      - echo ""
+      - echo "# SSH Private Key (for credential injection)"
+      - echo "ssh_private_key = <<EOF"
+      - echo "-----BEGIN OPENSSH PRIVATE KEY-----"
+      - echo "your-ssh-private-key-content"
+      - echo "-----END OPENSSH PRIVATE KEY-----"
+      - echo "EOF"
+      - echo ""
+      - echo "📖 See - boundary/README.md for complete configuration"
+
+  deploy:
+    desc: "Deploy Boundary integration"
+    dir: "{{.BOUNDARY_DIR}}"
+    cmds:
+      - echo "🚀 Deploying Boundary integration..."
+      - terraform init
+      - terraform plan
+      - terraform apply -auto-approve
+      - echo "✅ Boundary integration deployed successfully"
+      - task: status
+
+  status:
+    desc: "Show Boundary deployment status"
+    dir: "{{.BOUNDARY_DIR}}"
+    cmds:
+      - echo "📊 Boundary Integration Status -"
+      - echo ""
+      - echo "=== Cluster Information ==="
+      - terraform output boundary_cluster_url 2>/dev/null || echo "❌ Boundary not deployed"
+      - echo ""
+      - echo "=== Discovered Infrastructure ==="
+      - terraform output discovered_infrastructure 2>/dev/null || echo "❌ No infrastructure discovered"
+      - echo ""
+      - echo "=== Available Targets ==="
+      - terraform output boundary_targets 2>/dev/null || echo "❌ No targets available"
+      - echo ""
+      - echo "=== Connection Commands ==="
+      - terraform output connection_commands 2>/dev/null || echo "❌ No connection commands available"
+
+  connect-dc1:
+    desc: "Connect to DC1 servers via Boundary SSH"
+    dir: "{{.BOUNDARY_DIR}}"
+    cmds:
+      - echo "🔗 Connecting to DC1 servers via Boundary..."
+      - echo ""
+      - echo "Available DC1 targets -"
+      - terraform output -json boundary_targets | jq -r 'to_entries[] | select(.key | contains("dc1")) | "\(.key) - \(.value.id)"'
+      - echo ""
+      - echo "To connect -"
+      - echo "boundary connect ssh -target-id <target-id>"
+
+  connect-dc2:
+    desc: "Connect to DC2 servers via Boundary SSH"
+    dir: "{{.BOUNDARY_DIR}}"
+    cmds:
+      - echo "🔗 Connecting to DC2 servers via Boundary..."
+      - echo ""
+      - echo "Available DC2 targets -"
+      - terraform output -json boundary_targets | jq -r 'to_entries[] | select(.key | contains("dc2")) | "\(.key) - \(.value.id)"'
+      - echo ""
+      - echo "To connect -"
+      - echo "boundary connect ssh -target-id <target-id>"
+
+  list-targets:
+    desc: "List all available Boundary targets"
+    dir: "{{.BOUNDARY_DIR}}"
+    cmds:
+      - echo "🎯 Available Boundary Targets -"
+      - echo ""
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | "Name - \(.key)\nID - \(.value.id)\nType - \(.value.type)\nPort - \(.value.port)\n"' || echo "❌ No targets available"
+
+  test:
+    desc: "Test Boundary SSH connections"
+    cmds:
+      - echo "🧪 Testing Boundary SSH connections..."
+      - echo ""
+      - echo "1. Authenticate with Boundary -"
+      - echo "   boundary authenticate password -auth-method-id <auth-method> -login-name <username>"
+      - echo ""
+      - echo "2. List available targets -"
+      - echo "   task -t tasks/boundary.yml list-targets"
+      - echo ""
+      - echo "3. Test SSH connection -"
+      - echo "   boundary connect ssh -target-id <target-id>"
+      - echo ""
+      - echo "4. Expected result - SSH session to infrastructure node"
+
+  cleanup:
+    desc: "Remove Boundary integration"
+    dir: "{{.BOUNDARY_DIR}}"
+    cmds:
+      - echo "🗑️  Removing Boundary integration..."
+      - terraform destroy -auto-approve
+      - echo "✅ Boundary integration removed"
+
+  default:
+    desc: "Show help by default"
+    cmds:
+      - task: help

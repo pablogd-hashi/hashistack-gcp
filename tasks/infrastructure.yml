@@ -48,7 +48,7 @@ tasks:
       - task: deploy-dc1
       - task: deploy-dc2
       - echo "=== Both clusters deployed ==="
-      - echo "CRITICAL NEXT STEPS:"
+      - echo "CRITICAL NEXT STEPS -"
       - echo "1. Run 'nomad setup consul -y' on each cluster's server nodes"
       - echo "2. Use task ssh-dc1-server and task ssh-dc2-server to connect"
       - echo "3. Then deploy networking and monitoring"
@@ -169,7 +169,7 @@ tasks:
       - echo "=== DC1 Server External IPs ==="
       - gcloud compute instances list --filter='name~hashi-server' --format='value(name,EXTERNAL_IP)' | head -3
       - echo ""
-      - echo "For Kubernetes Helm values, use these IPs in externalServers.hosts:"
+      - echo "For Kubernetes Helm values, use these IPs in externalServers.hosts -"
       - gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)' | head -3 | sed 's/^/  - "/' | sed 's/$/"/'
 
   get-server-ips-dc2:
@@ -179,7 +179,7 @@ tasks:
       - echo "=== DC2 Server External IPs ==="
       - gcloud compute instances list --filter='name~hashi-server' --format='value(name,EXTERNAL_IP)' | head -3
       - echo ""
-      - echo "For Kubernetes Helm values, use these IPs in externalServers.hosts:"
+      - echo "For Kubernetes Helm values, use these IPs in externalServers.hosts -"
       - gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)' | head -3 | sed 's/^/  - "/' | sed 's/$/"/'
 
   get-server-ips:

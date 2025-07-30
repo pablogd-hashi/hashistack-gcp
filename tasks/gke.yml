@@ -36,7 +36,7 @@ tasks:
       - echo "=== kubectl Commands ==="
       - terraform output kubectl_commands
       - echo ""
-      - echo "NEXT STEPS:"
+      - echo "NEXT STEPS -"
       - echo "1. Run 'task gke:auth-southwest' to configure kubectl"
       - echo "2. Run 'task gke:setup-secrets-southwest' to setup Consul secrets"
       - echo "3. Run 'task gke:deploy-consul-southwest' to install Consul with admin partitions"
