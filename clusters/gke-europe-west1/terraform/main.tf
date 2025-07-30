@@ -53,9 +53,6 @@ resource "google_container_cluster" "primary" {
   name     = "${var.cluster_name}-gke"
   location = var.gcp_region
 
-  # Allow deletion for demo/PoC environments
-  deletion_protection = false
-
   # Use regional cluster for high availability
   remove_default_node_pool = true
   initial_node_count       = 1
