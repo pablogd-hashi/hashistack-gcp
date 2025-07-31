@@ -91,6 +91,31 @@ kubectl get nodes
 
 ### Phase 2: ACL Policies and Roles
 
+Before creating policies, ensure you're in the correct directory and have the required environment variables set:
+
+```bash
+# Navigate to project root
+cd /path/to/hashistack-gcp
+
+# Verify available policy files
+ls -la consul/admin-partitions/policies/
+
+# Should show:
+# backend-developer-acl-policy.hcl
+# finance-acl-policy.hcl  
+# frontend-developer-acl-policy.hcl
+# k8s-west1-admin-policy.hcl
+# k8s-southwest1-admin-policy.hcl
+# k8s-west1-development-policy.hcl
+# k8s-southwest1-development-policy.hcl
+# k8s-west1-testing-policy.hcl
+# k8s-southwest1-testing-policy.hcl
+# k8s-west1-acceptance-policy.hcl
+# k8s-southwest1-production-policy.hcl
+```
+
+**Important**: All `consul acl` commands must be run from the project root directory (`hashistack-gcp/`) for the file paths to work correctly.
+
 #### Step 2.1: Create Base Admin Partition Policies
 
 **Policy 1: k8s-west1-admin-policy**
@@ -156,6 +181,30 @@ consul acl policy create \
   -rules @consul/admin-partitions/policies/k8s-southwest1-production-policy.hcl
 ```
 
+#### Step 2.2a: Create Demo/Example Policies (Optional)
+
+These policies demonstrate different partition and namespace access patterns:
+
+```bash
+# Backend Developer Policy (web partition, backend namespaces)
+consul acl policy create \
+  -name "backend-developer-policy" \
+  -description "Backend developer access to web partition" \
+  -rules @consul/admin-partitions/policies/backend-developer-acl-policy.hcl
+
+# Frontend Developer Policy (web partition, frontend namespaces)
+consul acl policy create \
+  -name "frontend-developer-policy" \
+  -description "Frontend developer access to web partition" \
+  -rules @consul/admin-partitions/policies/frontend-developer-acl-policy.hcl
+
+# Finance Policy (finance partition)
+consul acl policy create \
+  -name "finance-policy" \
+  -description "Finance team access to finance partition" \
+  -rules @consul/admin-partitions/policies/finance-acl-policy.hcl
+```
+
 #### Step 2.3: Create ACL Roles
 
 **Admin Roles:**
@@ -207,6 +256,25 @@ consul acl role create \
   -name "k8s-southwest1-operator" \
   -description "Production operator role for k8s-southwest1" \
   -policy-name "k8s-southwest1-production-policy"
+```
+
+**Demo/Example Roles (Optional):**
+```bash
+# Demo roles for the example policies
+consul acl role create \
+  -name "backend-developer" \
+  -description "Backend developer role" \
+  -policy-name "backend-developer-policy"
+
+consul acl role create \
+  -name "frontend-developer" \
+  -description "Frontend developer role" \
+  -policy-name "frontend-developer-policy"
+
+consul acl role create \
+  -name "finance-user" \
+  -description "Finance team user role" \
+  -policy-name "finance-policy"
 ```
 
 ### Phase 3: Admin Partitions Creation
@@ -266,9 +334,35 @@ kubectl create secret generic consul-bootstrap-token \
   --from-literal=token="$(cat consul/admin-partitions/tokens/k8s-west1-admin.token)" \
   -n consul
 
-# Copy CA certificates from Consul servers
+# Fetch CA certificates from running Consul servers
+# Choose one of the following methods:
+
+# Option 1: Using Boundary SSH (if Boundary is deployed)
+# Get DC1 server target ID from Boundary
+boundary targets list -scope-id <your-scope-id> | grep dc1.*server
+
+# Connect via Boundary and copy certificates
+boundary connect ssh -target-id <dc1-server-target-id> -- "sudo cat /etc/consul.d/tls/consul-agent-ca.pem" > consul-agent-ca.pem
+boundary connect ssh -target-id <dc1-server-target-id> -- "sudo cat /etc/consul.d/tls/consul-agent-ca-key.pem" > consul-agent-ca-key.pem
+
+# Option 2: Using direct SSH/SCP (if SSH keys are configured)
+# First, get the DC1 server IP address
+DC1_SERVER_IP=$(gcloud compute instances list --filter='name~hashi-server.*-50' --format='value(natIP)' --limit=1)
+
+# SSH to DC1 server and copy CA certificates
+ssh debian@$DC1_SERVER_IP "sudo cat /etc/consul.d/tls/consul-agent-ca.pem" > consul-agent-ca.pem
+ssh debian@$DC1_SERVER_IP "sudo cat /etc/consul.d/tls/consul-agent-ca-key.pem" > consul-agent-ca-key.pem
+
+# Alternative: Use SCP (requires sudo permissions setup)
+# scp debian@$DC1_SERVER_IP:/etc/consul.d/tls/consul-agent-ca.pem ./consul-agent-ca.pem
+# scp debian@$DC1_SERVER_IP:/etc/consul.d/tls/consul-agent-ca-key.pem ./consul-agent-ca-key.pem
+
+# Verify certificates were downloaded
+ls -la consul-agent-ca*.pem
+
+# Create CA certificate secrets using the fetched files
 kubectl create secret generic consul-ca-cert \
-  --from-file=tls.crt=clusters/dc1/terraform/consul-agent-ca.pem \
+  --from-file=tls.crt=consul-agent-ca.pem \
   -n consul
 
 kubectl create secret generic consul-ca-key \
@@ -284,7 +378,7 @@ kubectl config use-context <gke-southwest1-context>
 # Create consul namespace
 kubectl create namespace consul
 
-# Create secrets (same process as west1)
+# Create secrets
 kubectl create secret generic consul-ent-license \
   --from-literal=key="$CONSUL_ENT_LICENSE" \
   -n consul
@@ -293,12 +387,32 @@ kubectl create secret generic consul-bootstrap-token \
   --from-literal=token="$(cat consul/admin-partitions/tokens/k8s-southwest1-admin.token)" \
   -n consul
 
+# Fetch CA certificates from DC2 Consul servers (if using southwest1 partition)
+# Choose one of the following methods:
+
+# Option 1: Using Boundary SSH (if Boundary is deployed)
+# Get DC2 server target ID from Boundary
+boundary targets list -scope-id <your-scope-id> | grep dc2.*server
+
+# Connect via Boundary and copy certificates
+boundary connect ssh -target-id <dc2-server-target-id> -- "sudo cat /etc/consul.d/tls/consul-agent-ca.pem" > consul-agent-ca.pem
+boundary connect ssh -target-id <dc2-server-target-id> -- "sudo cat /etc/consul.d/tls/consul-agent-ca-key.pem" > consul-agent-ca-key.pem
+
+# Option 2: Using direct SSH/SCP (if SSH keys are configured)
+# Get DC2 server IP address (149 suffix indicates DC2)
+DC2_SERVER_IP=$(gcloud compute instances list --filter='name~hashi-server.*-149' --format='value(natIP)' --limit=1)
+
+# SSH to DC2 server and copy CA certificates
+ssh debian@$DC2_SERVER_IP "sudo cat /etc/consul.d/tls/consul-agent-ca.pem" > consul-agent-ca.pem
+ssh debian@$DC2_SERVER_IP "sudo cat /etc/consul.d/tls/consul-agent-ca-key.pem" > consul-agent-ca-key.pem
+
+# Create CA certificate secrets using the fetched files
 kubectl create secret generic consul-ca-cert \
-  --from-file=tls.crt=clusters/dc1/terraform/consul-agent-ca.pem \
+  --from-file=tls.crt=consul-agent-ca.pem \
   -n consul
 
 kubectl create secret generic consul-ca-key \
-  --from-file=tls.key=clusters/dc1/terraform/consul-agent-ca-key.pem \
+  --from-file=tls.key=consul-agent-ca-key.pem \
   -n consul
 ```
 

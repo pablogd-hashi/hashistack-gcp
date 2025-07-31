@@ -1,15 +1,16 @@
+variable "datacenter" {
+  description = "The datacenter to deploy to"
+  type        = string
+  default     = "gcp-dc1"
+}
+
 job "grafana" {
   region      = "global"
-  datacenters = ["*"]
+  datacenters = [var.datacenter]
   type = "service"
 
   group "grafana" {
     count = 1
-
-    constraint {
-      attribute = "${node.class}"
-      value     = "client"
-    }
 
     network {
       port "grafana_ui" {

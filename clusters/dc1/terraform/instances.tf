@@ -43,6 +43,10 @@ resource "google_compute_instance_template" "instance_template" {
     scopes = ["cloud-platform", "compute-rw", "compute-ro", "userinfo-email", "storage-ro"]
   }
 
+  metadata = {
+    ssh-keys = "${var.ssh_username}:${var.ssh_public_key}"
+  }
+
   metadata_startup_script = templatefile("${path.module}/template/template.tpl",{
     dc_name = var.cluster_name,
     gcp_project = var.gcp_project,
@@ -87,6 +91,10 @@ resource "google_compute_instance_template" "instance_template_clients" {
   service_account {
     email  = data.google_service_account.owner_project.email
     scopes = ["cloud-platform", "compute-rw", "compute-ro", "userinfo-email", "storage-ro"]
+  }
+
+  metadata = {
+    ssh-keys = "${var.ssh_username}:${var.ssh_public_key}"
   }
 
   metadata_startup_script = templatefile("${path.module}/template/template-client.tpl",{

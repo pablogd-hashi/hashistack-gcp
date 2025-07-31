@@ -34,6 +34,36 @@ This repository creates a complete HashiCorp enterprise ecosystem on GCP includi
 
 ![HLD](./docs/images/architecture-diagram.png)
 
+## 🎉 Current Status (Deployment Ready)
+
+This repository includes **working clusters** with all issues resolved:
+
+**✅ Infrastructure Status:**
+- **DC1 (europe-north1):** 3 Consul servers + 2 clients running
+- **DC2 (europe-central2):** 3 Consul servers + 2 clients running  
+- **Both clusters:** Consul Enterprise v1.21.2+ent healthy and connected
+- **Templates:** Fixed Consul configuration issues for future deployments
+
+**🚀 Available Features:**
+- **Core Infrastructure:** `task deploy-both-dc` (working)
+- **Environment Setup:** `task eval-both` (required)
+- **Cluster Peering:** `task -t tasks/peering.yml help`
+- **Admin Partitions:** `task -t tasks/admin-partitions.yml help`
+- **Automated Boundary:** `task -t tasks/boundary-auto.yml help` (new!)
+- **CTS Integration:** `task -t tasks/cts.yml help`
+
+**📖 Quick Commands:**
+```bash
+# Get environment variables (copy/paste to shell)
+task eval-both
+
+# Configure Nomad-Consul integration (required)
+task setup-consul-nomad-both
+
+# Access cluster UIs
+task show-all-urls
+```
+
 ## Prerequisites
 
 Before deploying this stack, ensure you have:
@@ -84,9 +114,15 @@ machine_type_server = "e2-standard-2"
 machine_type_client = "e2-standard-4"
 ```
 
+**SSH Access Variables (REQUIRED):**
+```
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2E... your-public-key"
+ssh_private_key = "-----BEGIN PRIVATE KEY-----\n..." # For Boundary integration
+ssh_username = "debian" # Default, can be customized
+```
+
 **Workspace-Specific Variables:**
 ```
-ssh_public_key = "your-ssh-public-key"
 dns_zone = "your-dns-zone-name" # Optional
 cluster_name = "your-cluster-name"
 ```
@@ -130,11 +166,26 @@ task deploy-traefik-dc1
 task deploy-demo-apps-dc1
 ```
 
-### 4. Configure Nomad-Consul Integration (Required for Multi-Cluster)
+### 4. Post-Deployment Configuration (REQUIRED)
 
-After deploying both clusters, configure Nomad workload identity on each cluster:
+After deploying clusters, complete these **critical** configuration steps:
 
-**Execute on both DC1 and DC2 servers:**
+#### 4.1 Setup Environment Variables
+
+**Export environment variables to connect to your clusters:**
+```bash
+# Get environment variables for both clusters
+task eval-both
+
+# Copy and paste the output into your shell
+# This configures CONSUL_HTTP_ADDR, CONSUL_HTTP_TOKEN, NOMAD_ADDR, NOMAD_TOKEN
+```
+
+**Note**: SSH access requires the `ssh_public_key` and `ssh_private_key` variables to be configured in your Terraform Cloud workspace. Without these, you cannot SSH directly to instances or use Boundary SSH connections.
+
+#### 4.2 Configure Nomad-Consul Integration
+
+**Execute on both DC1 and DC2 servers AFTER setting environment variables:**
 ```bash
 # SSH to each cluster's server nodes
 task ssh-dc1-server  # or task ssh-dc2-server
@@ -143,7 +194,34 @@ task ssh-dc1-server  # or task ssh-dc2-server
 nomad setup consul -y
 ```
 
-This step is **required** before setting up cluster peering or deploying applications that use service mesh features.
+#### 4.3 Authenticate to Nomad UI
+
+**For UI access, authenticate with Nomad:**
+```bash
+# This opens the browser and authenticates using your NOMAD_TOKEN
+nomad ui -authenticate
+```
+
+These steps are **required** before setting up cluster peering or deploying applications that use service mesh features.
+
+### 5. Current Deployment Status
+
+After completing the infrastructure deployment and post-configuration steps:
+
+**✅ DC1 Cluster (europe-north1):**
+- 3 Consul servers + 2 clients running
+- Consul Enterprise v1.21.2+ent healthy
+- Full cluster connectivity established
+
+**✅ DC2 Cluster (europe-central2):**  
+- 3 Consul servers + 2 clients running
+- Consul Enterprise v1.21.2+ent healthy
+- Full cluster connectivity established
+
+**🔧 Fixed Issues:**
+- Resolved Consul startup failures caused by invalid `limits.grpc_max_requests_per_stream` configuration
+- Updated Terraform templates to prevent future occurrences
+- Both clusters now fully operational
 
 ## Functionality Breakdown
 
@@ -198,16 +276,64 @@ For secure remote access to infrastructure with HashiCorp Boundary:
 
 **Documentation:** [`boundary/README.md`](boundary/README.md)
 
-**Quick Start:**
-```bash
-# Deploy base infrastructure first
-task deploy-dc1
+#### Prerequisites:
+1. **HCP Boundary cluster** running and accessible
+2. **SSH keys** configured in Terraform Cloud workspace variables:
+   - `ssh_public_key` - Your SSH public key content (required for all clusters)
+   - `ssh_private_key` - Your SSH private key content (sensitive, required for Boundary)
+   - `ssh_username` - SSH username (defaults to "debian")
+3. **Boundary variables** configured in Terraform Cloud or tfvars:
+   ```bash
+   # HCP Boundary Configuration
+   hcp_boundary_cluster_id = "your-boundary-cluster-id"
+   boundary_addr = "https://your-cluster.boundary.hashicorp.cloud"
+   boundary_auth_method_id = "your-auth-method-id" 
+   boundary_admin_login_name = "admin"
+   boundary_admin_password = "your-boundary-password" # Use as sensitive variable
+   
+   # HCP Credentials (reuse from existing variable set)
+   hcp_client_id = "your-hcp-client-id"
+   hcp_client_secret = "your-hcp-client-secret" # Sensitive
+   
+   # Remote State Configuration (for workspace integration)
+   dc1_remote_state_config = {
+     organization = "your-hcp-terraform-org"
+     workspaces = { name = "your-dc1-workspace-name" }
+   }
+   dc2_remote_state_config = {
+     organization = "your-hcp-terraform-org"
+     workspaces = { name = "your-dc2-workspace-name" }
+   }
+   ```
 
-# Configure and deploy Boundary integration
-cd boundary/terraform
-terraform init
-terraform apply
+#### Automated Deployment:
+```bash
+# Complete automated setup (recommended)
+task -t tasks/boundary-auto.yml setup-full
+
+# Or step-by-step:
+task -t tasks/boundary-auto.yml discover-targets    # Auto-discover infrastructure
+task -t tasks/boundary-auto.yml deploy-complete     # Deploy with credential injection
+task -t tasks/boundary-auto.yml list-all-targets    # List all configured targets
 ```
+
+#### Quick Connection Examples:
+```bash
+# Connect to DC1 server via Boundary
+task -t tasks/boundary-auto.yml connect-dc1-server
+
+# Connect to DC2 client via Boundary  
+task -t tasks/boundary-auto.yml connect-dc2-client
+
+# Manual connection using target ID
+boundary connect ssh -target-id <target-id>
+```
+
+**Features:**
+- **Auto-discovery** of all DC1 and DC2 infrastructure (servers + clients)
+- **Automatic credential injection** using workspace SSH keys
+- **Target management** with host catalogs and credential stores
+- **Quick connection helpers** for common access patterns
 
 ## Directory Structure
 
@@ -301,6 +427,8 @@ After deployment, services are accessible at:
 2. **Image Not Found**: Run `task build-images` before deployment
 3. **DNS Issues**: Verify DNS zone configuration and permissions
 4. **Connectivity**: Check firewall rules and network configuration
+5. **SSH Access Denied**: Ensure `ssh_public_key` variable is configured in Terraform Cloud
+6. **Boundary Connection Closed**: Verify both `ssh_public_key` and `ssh_private_key` are configured
 
 **Useful Commands:**
 ```bash

@@ -83,6 +83,47 @@ tasks:
 
   # === Post-Deployment Configuration ===
 
+  eval-dc1:
+    desc: "Get environment variables for DC1 cluster"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "# DC1 Environment Variables - copy and paste these into your shell:"
+      - echo ""
+      - terraform output -json environment_setup | jq -r .bash_export
+
+  eval-dc2:
+    desc: "Get environment variables for DC2 cluster"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "# DC2 Environment Variables - copy and paste these into your shell:"
+      - echo ""
+      - terraform output -json environment_setup | jq -r .bash_export
+
+  eval-both:
+    desc: "Get environment variables for both DC clusters"
+    cmds:
+      - echo "# ==> DC1 Environment Variables:"
+      - task: eval-dc1
+      - echo ""
+      - echo "# ==> DC2 Environment Variables:"
+      - task: eval-dc2
+
+  gke-auth-west:
+    desc: "Authenticate to GKE Europe West cluster"
+    dir: "{{.GKE_WEST_DIR}}"
+    cmds:
+      - echo "🔐 Authenticating to GKE Europe West cluster..."
+      - terraform output -raw gke_auth_command | bash
+      - echo "✅ GKE Europe West context configured"
+
+  gke-auth-southwest:
+    desc: "Authenticate to GKE Southwest cluster"
+    dir: "{{.GKE_SW_DIR}}"
+    cmds:
+      - echo "🔐 Authenticating to GKE Southwest cluster..."
+      - terraform output -raw gke_auth_command | bash
+      - echo "✅ GKE Southwest context configured"
+
   setup-consul-nomad-dc1:
     desc: "Configure Nomad-Consul integration on DC1 (REQUIRED after DC deployment)"
     cmds:
@@ -109,29 +150,49 @@ tasks:
     desc: "Deploy Traefik load balancer on DC1"
     cmds:
       - echo "🔀 Deploying Traefik on DC1..."
-      - cd {{.DC1_DIR}} && terraform output -raw ssh_dc1_server | bash -c 'ssh -o StrictHostKeyChecking=no ubuntu@$(cat) "export NOMAD_ADDR=http://localhost:4646 && export NOMAD_TOKEN=$(terraform output -raw nomad_token) && nomad job run /opt/nomad-apps/monitoring/traefik.hcl"'
+      - echo "⚠️  Ensure environment variables are set - task eval-dc1"
+      - nomad run -var datacenter=gcp-dc1 nomad-apps/monitoring/traefik.hcl
+      - echo "✅ Traefik deployed to DC1"
 
   deploy-traefik-dc2:
     desc: "Deploy Traefik load balancer on DC2"
     cmds:
       - echo "🔀 Deploying Traefik on DC2..."
-      - cd {{.DC2_DIR}} && terraform output -raw ssh_dc2_server | bash -c 'ssh -o StrictHostKeyChecking=no ubuntu@$(cat) "export NOMAD_ADDR=http://localhost:4646 && export NOMAD_TOKEN=$(terraform output -raw nomad_token) && nomad job run /opt/nomad-apps/monitoring/traefik.hcl"'
+      - echo "⚠️  Ensure environment variables are set - task eval-dc2"
+      - nomad run -var datacenter=gcp-dc2 nomad-apps/monitoring/traefik.hcl
+      - echo "✅ Traefik deployed to DC2"
 
   deploy-monitoring-dc1:
     desc: "Deploy monitoring stack (Prometheus + Grafana) on DC1"
     cmds:
       - echo "📊 Deploying monitoring stack on DC1..."
+      - echo "⚠️  Ensure environment variables are set - task eval-dc1"
       - task: deploy-traefik-dc1
-      - echo "Deploying Prometheus and Grafana..."
-      # Add actual deployment commands here
+      - echo "🔍 Deploying Prometheus..."
+      - nomad run -var datacenter=gcp-dc1 nomad-apps/monitoring/prometheus.hcl
+      - echo "📈 Deploying Grafana..."
+      - nomad run -var datacenter=gcp-dc1 nomad-apps/monitoring/grafana.hcl
+      - echo "✅ Complete monitoring stack deployed to DC1"
 
   deploy-monitoring-dc2:
     desc: "Deploy monitoring stack (Prometheus + Grafana) on DC2"
     cmds:
       - echo "📊 Deploying monitoring stack on DC2..."
+      - echo "⚠️  Ensure environment variables are set - task eval-dc2"
       - task: deploy-traefik-dc2
-      - echo "Deploying Prometheus and Grafana..."
-      # Add actual deployment commands here
+      - echo "🔍 Deploying Prometheus..."
+      - nomad run -var datacenter=gcp-dc2 nomad-apps/monitoring/prometheus.hcl
+      - echo "📈 Deploying Grafana..."
+      - nomad run -var datacenter=gcp-dc2 nomad-apps/monitoring/grafana.hcl
+      - echo "✅ Complete monitoring stack deployed to DC2"
+
+  deploy-monitoring-both:
+    desc: "Deploy monitoring stack on both DC1 and DC2"
+    cmds:
+      - echo "📊 Deploying monitoring stack on both clusters..."
+      - task: deploy-monitoring-dc1
+      - task: deploy-monitoring-dc2
+      - echo "🎉 Monitoring stack deployed on both DC1 and DC2"
 
   # === Information and Status ===
 
@@ -161,10 +222,12 @@ tasks:
       - task: show-dc2-info
       - echo ""
       - echo "📋 Next steps -"
-      - echo "1. Configure Nomad-Consul integration - task setup-consul-nomad-both"
-      - echo "2. For cluster peering - task -t tasks/peering.yml help"
-      - echo "3. For admin partitions - task -t tasks/admin-partitions.yml help"
-      - echo "4. For boundary integration - task -t tasks/boundary.yml help"
+      - echo "1. Setup environment variables - task eval-both"
+      - echo "2. Configure Nomad-Consul integration - task setup-consul-nomad-both"
+      - echo "3. Authenticate to Nomad UI - nomad ui -authenticate"
+      - echo "4. For cluster peering - task -t tasks/peering.yml help"
+      - echo "5. For admin partitions - task -t tasks/admin-partitions.yml help"
+      - echo "6. For boundary integration - task -t tasks/boundary.yml help"
 
   get-all-ips:
     desc: "Get all server and client IPs from all clusters"
@@ -250,10 +313,13 @@ tasks:
       - task: show-all-urls
       - task: get-all-ips
       - echo ""
+      - echo "⚠️  IMPORTANT - Setup environment variables first - task eval-both"
+      - echo ""
       - echo "📋 Available feature modules -"
       - echo "- Cluster Peering - task -t tasks/peering.yml help"
       - echo "- Admin Partitions - task -t tasks/admin-partitions.yml help"  
       - echo "- Boundary Integration - task -t tasks/boundary.yml help"
+      - echo "- Automated Boundary - task -t tasks/boundary-auto.yml help"
       - echo "- CTS Integration - task -t tasks/cts.yml help"
 
   help:
@@ -272,9 +338,19 @@ tasks:
       - echo "  deploy-all            - Deploy all clusters"
       - echo ""
       - echo "🔧 POST-DEPLOYMENT -"
+      - echo "  eval-dc1                - Get DC1 environment variables"
+      - echo "  eval-dc2                - Get DC2 environment variables"
+      - echo "  eval-both               - Get both DC environment variables"
+      - echo "  gke-auth-west           - Authenticate to GKE Europe West cluster"
+      - echo "  gke-auth-southwest      - Authenticate to GKE Southwest cluster"
       - echo "  setup-consul-nomad-both - Configure Nomad-Consul integration (REQUIRED)"
+      - echo ""
+      - echo "🚀 APPLICATION DEPLOYMENT -"
+      - echo "  deploy-traefik-dc1      - Deploy Traefik load balancer on DC1"
+      - echo "  deploy-traefik-dc2      - Deploy Traefik load balancer on DC2"
       - echo "  deploy-monitoring-dc1   - Deploy monitoring stack on DC1"
       - echo "  deploy-monitoring-dc2   - Deploy monitoring stack on DC2"
+      - echo "  deploy-monitoring-both  - Deploy monitoring on both clusters"
       - echo ""
       - echo "📊 INFORMATION -"
       - echo "  show-all-urls         - Show all cluster URLs and access info"
@@ -295,13 +371,17 @@ tasks:
       - echo "  task -t tasks/peering.yml help           - Cluster peering setup"
       - echo "  task -t tasks/admin-partitions.yml help  - Admin partitions setup"
       - echo "  task -t tasks/boundary.yml help          - Boundary integration"
+      - echo "  task -t tasks/boundary-auto.yml help     - Automated Boundary deployment"
       - echo "  task -t tasks/cts.yml help               - Consul Terraform Sync"
       - echo ""
       - echo "📖 QUICK START -"
       - echo "  1. task build-images"
       - echo "  2. task deploy-both-dc"
-      - echo "  3. task setup-consul-nomad-both"
-      - echo "  4. task show-all-urls"
+      - echo "  3. task eval-both (copy env vars to your shell)"
+      - echo "  4. task setup-consul-nomad-both"
+      - echo "  5. task deploy-monitoring-both (optional)"
+      - echo "  6. nomad ui -authenticate (for UI access)"
+      - echo "  7. task show-all-urls"
 
   default:
     desc: "Show help by default"

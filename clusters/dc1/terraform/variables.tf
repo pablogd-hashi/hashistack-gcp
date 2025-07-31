@@ -108,3 +108,14 @@ variable "enable_cts" {
   description = "Set it to true to deploy a node for CTS"
   default = "false"
 }
+
+variable "ssh_username" {
+  description = "SSH username for instance access"
+  type        = string
+  default     = "debian"
+}
+
+variable "ssh_public_key" {
+  description = "SSH public key for instance access"
+  type        = string
+}

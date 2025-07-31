@@ -1,22 +1,26 @@
+variable "datacenter" {
+  description = "The datacenter to deploy to"
+  type        = string
+  default     = "gcp-dc1"
+}
+
 job "traefik" {
   region      = "global"
-  datacenters = ["*"]
+  datacenters = [var.datacenter]
   type = "service"
 
   group "traefik" {
     count = 1
 
-    constraint {
-      attribute = "${node.class}"
-      value     = "client"
-    }
-
     network {
+      mode = "bridge"
       port "http" {
         static = 80
+        to = 80
       }
       port "api" {
         static = 8080
+        to = 8080
       }
     }
 
@@ -54,16 +58,14 @@ job "traefik" {
       driver = "docker"
 
       config {
-        image        = "traefik:v3.0"
-        network_mode = "host"
-        ports        = ["http", "api"]
+        image = "traefik:v3.0"
+        ports = ["http", "api"]
         args = [
           "--api.dashboard=true",
           "--api.insecure=true",
           "--entrypoints.web.address=:80",
           "--entrypoints.traefik.address=:8080",
           "--providers.consul.endpoints=127.0.0.1:8500",
-          "--providers.consul.watch=true",
           "--ping=true"
         ]
       }

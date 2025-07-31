@@ -28,18 +28,31 @@ HashiCorp Boundary integration provides secure, authenticated remote access to y
 **Required Services:**
 - HCP Boundary cluster (or self-managed Boundary cluster)
 - Deployed HashiStack infrastructure (DC1 and/or DC2)
-- Valid SSH private key for instance access
+- SSH keys configured in Terraform Cloud workspace variables
 
-**Required Information:**
-- HCP Boundary cluster URL and ID
-- Boundary authentication method ID
-- HCP client credentials
-- Admin user credentials for Boundary
+**SSH Configuration (CRITICAL):**
+```bash
+# Required in Terraform Cloud workspace or terraform.auto.tfvars
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2E... your-public-key"
+ssh_private_key = "-----BEGIN PRIVATE KEY-----\n..." # Sensitive variable
+ssh_username = "debian" # Default, can be customized
+```
+
+**Boundary Variables:**
+```bash
+hcp_boundary_cluster_id = "your-boundary-cluster-id"
+boundary_addr = "https://your-cluster.boundary.hashicorp.cloud"
+boundary_auth_method_id = "your-auth-method-id"
+boundary_admin_login_name = "admin"
+boundary_admin_password = "your-boundary-password" # Sensitive
+hcp_client_id = "your-hcp-client-id"
+hcp_client_secret = "your-hcp-client-secret" # Sensitive
+```
 
 **Permissions:**
 - Boundary cluster administrator access
 - GCP compute instance list permissions
-- SSH key access for credential injection
+- SSH private key for credential injection
 
 ## How to run in tasks
 
@@ -315,6 +328,88 @@ resource "boundary_role" "custom_role" {
   ]
 }
 ```
+
+## Troubleshooting
+
+### SSH Connection Issues
+
+**Problem**: `boundary connect ssh` fails with "Connection closed by 127.0.0.1"
+
+**Root Cause**: SSH keys not configured in HashiStack infrastructure
+
+**Solution**: Ensure these variables are configured in your Terraform Cloud workspace:
+```bash
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2E... your-public-key"
+ssh_private_key = "-----BEGIN PRIVATE KEY-----\n..." # Sensitive
+```
+
+Then redeploy infrastructure:
+```bash
+task deploy-dc1  # or deploy-dc2
+```
+
+**Verification**: Test direct SSH access first:
+```bash
+ssh debian@$(gcloud compute instances list --filter='name~hashi-server' --format='value(natIP)' --limit=1)
+```
+
+### Target Discovery Issues
+
+**Problem**: No targets discovered or targets show wrong IPs
+
+**Solutions**:
+1. **Check gcloud authentication**:
+   ```bash
+   gcloud auth list
+   gcloud config set project your-project-id
+   ```
+
+2. **Verify instance naming**:
+   ```bash
+   gcloud compute instances list --filter='name~hashi-server'
+   gcloud compute instances list --filter='name~hashi-clients'
+   ```
+
+3. **Force refresh target discovery**:
+   ```bash
+   task -t tasks/boundary-auto.yml update-discovery
+   ```
+
+### Credential Store Issues
+
+**Problem**: SSH private key not working for credential injection
+
+**Solutions**:
+1. **Verify key format**: Ensure private key includes proper headers and newlines
+2. **Test key locally**: 
+   ```bash
+   ssh -i /path/to/private-key debian@server-ip
+   ```
+3. **Check sensitive variable**: Ensure `ssh_private_key` is marked as sensitive in Terraform Cloud
+
+### Authentication Issues
+
+**Problem**: Boundary authentication failures
+
+**Solutions**:
+1. **Check credentials**:
+   ```bash
+   boundary authenticate password -auth-method-id=$BOUNDARY_AUTH_METHOD_ID -login-name=admin
+   ```
+
+2. **Verify environment variables**:
+   ```bash
+   echo $BOUNDARY_ADDR
+   echo $BOUNDARY_AUTH_METHOD_ID
+   ```
+
+3. **Test HCP credentials**:
+   ```bash
+   curl -X POST https://auth.hashicorp.com/oauth/token \
+     -d grant_type=client_credentials \
+     -d client_id=$HCP_CLIENT_ID \
+     -d client_secret=$HCP_CLIENT_SECRET
+   ```
 
 ## Integration with CI/CD
 

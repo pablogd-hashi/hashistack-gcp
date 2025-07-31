@@ -118,10 +118,8 @@ sudo tee $CONSUL_DIR/server.hcl > /dev/null <<EOF
 server = true
 bootstrap_expect = 3
 
-# Increase concurrent streams for service mesh
-limits {
-  grpc_max_requests_per_stream = 1000
-}
+# Service mesh configuration
+# Note: Consul limits configuration moved to performance tuning section if needed
 
 ui = true
 client_addr = "0.0.0.0"

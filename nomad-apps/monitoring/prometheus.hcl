@@ -1,19 +1,22 @@
+variable "datacenter" {
+  description = "The datacenter to deploy to"
+  type        = string
+  default     = "gcp-dc1"
+}
+
 job "prometheus" {
   region      = "global"
-  datacenters = ["*"]
+  datacenters = [var.datacenter]
   type        = "service"
 
   group "monitoring" {
     count = 1
 
-    constraint {
-      attribute = "${node.class}"
-      value     = "client"
-    }
-
     network {
+      mode = "bridge"
       port "prometheus_ui" {
         static = 9090
+        to = 9090
       }
     }
 
@@ -26,6 +29,24 @@ job "prometheus" {
 
     ephemeral_disk {
       size = 300
+    }
+
+    service {
+      name = "prometheus"
+      tags = ["monitoring", "metrics"]
+      port = "prometheus_ui"
+
+      check {
+        name     = "prometheus_ui port alive"
+        type     = "http"
+        path     = "/-/healthy"
+        interval = "10s"
+        timeout  = "2s"
+      }
+
+      connect {
+        sidecar_service {}
+      }
     }
 
     task "prometheus" {
@@ -71,31 +92,12 @@ EOH
 
       config {
         image = "prom/prometheus:latest"
-        network_mode = "host"
 
         volumes = [
           "local/prometheus.yml:/etc/prometheus/prometheus.yml",
         ]
 
         ports = ["prometheus_ui"]
-      }
-
-      service {
-        name = "prometheus"
-        tags = ["monitoring", "metrics"]
-        port = "prometheus_ui"
-
-        check {
-          name     = "prometheus_ui port alive"
-          type     = "http"
-          path     = "/-/healthy"
-          interval = "10s"
-          timeout  = "2s"
-        }
-
-        connect {
-          sidecar_service {}
-        }
       }
 
       resources {

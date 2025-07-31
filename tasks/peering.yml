@@ -15,6 +15,7 @@ tasks:
       - echo ""
       - echo "📋 PREREQUISITES -"
       - echo "  ✅ Both DC1 and DC2 clusters deployed"
+      - echo "  ✅ Environment variables configured - task eval-both"
       - echo "  ✅ Nomad-Consul integration configured - task setup-consul-nomad-both"
       - echo ""
       - echo "📖 DOCUMENTATION - consul/peering/README.md"
