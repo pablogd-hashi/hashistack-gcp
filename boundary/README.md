@@ -1,204 +1,234 @@
 # HashiCorp Boundary Integration
 
-## Overview
+Secure access to your HashiStack infrastructure without SSH keys, VPN connections, or network exposure.
 
-HashiCorp Boundary integration provides secure, authenticated remote access to your HashiStack infrastructure without exposing SSH keys or requiring VPN connections. This integration automatically discovers your deployed infrastructure and creates secure SSH access targets.
+**📖 [Back to Main README](../README.md)**
 
-### What This Integration Provides
+## Why Boundary Integration?
 
-**Secure Access Targets:**
-- SSH access to Consul/Nomad server nodes
-- SSH access to Nomad client nodes
+Boundary provides zero-trust secure access to your HashiStack infrastructure:
 
-**Enterprise Features:**
-- Centralized access control and policies
-- Session recording and audit logs
-- Just-in-time credential injection
-- Multi-factor authentication support
-- Role-based access control (RBAC)
+- **Eliminate SSH key distribution** with automatic credential injection
+- **Remove VPN complexity** with direct secure tunnels
+- **Centralized access control** with role-based permissions
+- **Complete audit trail** with session recording and logging
+- **Just-in-time access** with dynamic credential injection
+- **Multi-factor authentication** support for enhanced security
 
-**Infrastructure Integration:**
-- Automatic discovery of deployed instances
-- Dynamic host catalog updates
-- Integration with existing SSH keys
-- Works with both DC1 and DC2 clusters
+This integration automatically discovers your deployed infrastructure and creates secure SSH access targets for all servers and clients.
+
+## Architecture Overview
+
+```
+Boundary HCP Cluster
+         │
+    ┌────▼────┐
+    │ Boundary │ ◄─── Admin Authentication
+    │ Proxy    │
+    └────┬────┘
+         │ Encrypted Tunnels
+    ┌────▼────┐    ┌────────────┐
+    │ DC1     │    │ DC2        │
+    │ Servers │    │ Servers    │
+    │ Clients │    │ Clients    │
+    └─────────┘    └────────────┘
+```
+
+**Components:**
+- **HCP Boundary Cluster**: Managed control plane for secure access
+- **Automatic Discovery**: Finds deployed infrastructure via GCP APIs
+- **Host Catalogs**: Organize infrastructure by datacenter and function
+- **SSH Targets**: Secure access points with credential injection
+- **Role-Based Access**: Different permissions for dev, ops, and admin users
 
 ## Prerequisites
 
-**Required Services:**
-- HCP Boundary cluster (or self-managed Boundary cluster)
-- Deployed HashiStack infrastructure (DC1 and/or DC2)
-- SSH keys configured in Terraform Cloud workspace variables
+### Required Infrastructure
+- **HCP Boundary cluster** (or self-managed Boundary)
+- **HashiStack infrastructure** deployed (DC1/DC2 clusters)
+- **SSH keys configured** in Terraform Cloud workspace variables
 
-**SSH Configuration (CRITICAL):**
-```bash
+### Required Credentials
+- **Boundary admin credentials** for configuration
+- **HCP client credentials** for API access
+- **SSH private key** for credential injection
+- **GCP permissions** for infrastructure discovery
+
+### Required Variables
+
+**SSH Configuration (Critical):**
+```hcl
 # Required in Terraform Cloud workspace or terraform.auto.tfvars
 ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2E... your-public-key"
 ssh_private_key = "-----BEGIN PRIVATE KEY-----\n..." # Sensitive variable
-ssh_username = "debian" # Default, can be customized
+ssh_username = "debian" # Default username
 ```
 
-**Boundary Variables:**
-```bash
+**Boundary Configuration:**
+```hcl
+# HCP Boundary cluster details
 hcp_boundary_cluster_id = "your-boundary-cluster-id"
 boundary_addr = "https://your-cluster.boundary.hashicorp.cloud"
 boundary_auth_method_id = "your-auth-method-id"
 boundary_admin_login_name = "admin"
 boundary_admin_password = "your-boundary-password" # Sensitive
+
+# HCP API credentials
 hcp_client_id = "your-hcp-client-id"
 hcp_client_secret = "your-hcp-client-secret" # Sensitive
+
+# Deployment flags
+dc1_deployed = true
+dc2_deployed = false # Set to true if DC2 is deployed
 ```
 
-**Permissions:**
-- Boundary cluster administrator access
-- GCP compute instance list permissions
-- SSH private key for credential injection
-
-## How to run in tasks
+## Quick Start
 
 ### 1. Deploy Base Infrastructure
-
-Deploy your HashiStack infrastructure first:
-
 ```bash
-# Deploy primary cluster
+# Deploy your HashiStack infrastructure first
 task deploy-dc1
 
-# Or deploy both clusters
-task deploy-both
+# Or deploy both datacenters
+task deploy-both-dc
 ```
 
-### 2. Configure Boundary Variables
-
-Edit `boundary/terraform/terraform.auto.tfvars` with your configuration:
-
-```hcl
-# HCP Boundary Configuration
-hcp_boundary_cluster_id = "your-boundary-cluster-id"
-boundary_addr = "https://your-boundary-cluster.boundary.hashicorp.cloud"
-boundary_auth_method_id = "your-auth-method-id"
-boundary_admin_login_name = "your-admin-username"
-
-# Deployment Configuration
-dc1_deployed = true
-dc2_deployed = false  # Set to true if DC2 is deployed
-
-# GCP Configuration
-gcp_project = "your-gcp-project-id"
-
-# HCP Configuration  
-hcp_client_id = "your-hcp-client-id"
-hcp_client_secret = "your-hcp-client-secret"
-
-# SSH Private Key (for credential injection)
-ssh_private_key = <<EOF
------BEGIN OPENSSH PRIVATE KEY-----
-your-ssh-private-key-content
------END OPENSSH PRIVATE KEY-----
-EOF
-```
-
-### 3. Set Admin Password
-
-Set your Boundary admin password as an environment variable:
-
+### 2. Automated Boundary Setup
 ```bash
-export TF_VAR_boundary_admin_password="your-boundary-admin-password"
+# Complete automated deployment
+task -t tasks/boundary-auto.yml boundary:setup-full
+
+# This automatically:
+# - Discovers all deployed infrastructure
+# - Creates host catalogs and credential stores
+# - Sets up SSH targets with credential injection
+# - Configures role-based access control
 ```
 
-### 4. Deploy Boundary Integration
-
+### 3. Connect to Infrastructure
 ```bash
+# Authenticate with Boundary
+boundary authenticate password -auth-method-id <auth-method-id> -login-name admin
+
+# Connect to DC1 server
+task -t tasks/boundary-auto.yml boundary:connect-dc1-server
+
+# Connect to DC1 client
+task -t tasks/boundary-auto.yml boundary:connect-dc1-client
+```
+
+### 4. Verify Access
+```bash
+# List all available targets
+task -t tasks/boundary-auto.yml boundary:list-all-targets
+
+# Test all connections
+task -t tasks/boundary-auto.yml boundary:test-all-connections
+```
+
+## Deployment Workflows
+
+### Automated Setup (Recommended)
+```bash
+# Complete end-to-end setup
+task -t tasks/boundary-auto.yml boundary:setup-full
+
+# View available targets
+task -t tasks/boundary-auto.yml boundary:list-all-targets
+
+# Test connectivity
+task -t tasks/boundary-auto.yml boundary:test-all-connections
+```
+
+### Manual Setup
+```bash
+# Configure variables
 cd boundary/terraform
+vi terraform.auto.tfvars
+
+# Set admin password
+export TF_VAR_boundary_admin_password="your-password"
+
+# Deploy
 terraform init
 terraform plan
 terraform apply
+
+# Get connection commands
+terraform output connection_commands
 ```
 
-## Architecture
+## Available Tasks
 
-The Boundary integration creates the following organizational structure:
+Use the boundary-auto Taskfile for automated operations:
 
-```
-Global Scope
-├── Development Org
-│   ├── DC1 Development Project
-│   │   ├── DC1 Host Catalog
-│   │   ├── SSH Credential Store
-│   │   └── Access Targets:
-│   │       ├── dc1-servers-ssh
-│   │       └── dc1-clients-ssh
-│   └── DC2 Development Project (if deployed)
-│       └── Similar target structure
-└── Operations Org
-    ├── DC1 Production Project  
-    └── DC2 Production Project
-```
+### Setup Tasks
+- `task -t tasks/boundary-auto.yml boundary:discover-targets` - Auto-discover infrastructure
+- `task -t tasks/boundary-auto.yml boundary:inject-credentials` - Configure SSH credentials
+- `task -t tasks/boundary-auto.yml boundary:deploy-complete` - Deploy with full automation
 
-**Roles and Permissions:**
-- **Management Users**: Full administrative access
-- **Developers**: Access to development projects and targets
-- **Operations**: Access to production projects and targets
+### Connection Tasks
+- `task -t tasks/boundary-auto.yml boundary:connect-dc1-server` - Connect to DC1 server
+- `task -t tasks/boundary-auto.yml boundary:connect-dc2-server` - Connect to DC2 server
+- `task -t tasks/boundary-auto.yml boundary:connect-dc1-client` - Connect to DC1 client
+- `task -t tasks/boundary-auto.yml boundary:connect-dc2-client` - Connect to DC2 client
 
-## Usage
+### Management Tasks
+- `task -t tasks/boundary-auto.yml boundary:list-all-targets` - List all configured targets
+- `task -t tasks/boundary-auto.yml boundary:update-discovery` - Refresh target discovery
+- `task -t tasks/boundary-auto.yml boundary:status-full` - Show complete deployment status
 
-### Authentication
+### Complete Setup
+- `task -t tasks/boundary-auto.yml boundary:setup-full` - Full automated setup
 
-Authenticate with your Boundary cluster:
+### Cleanup
+- `task -t tasks/boundary-auto.yml boundary:cleanup-all` - Remove all Boundary resources
 
+## Usage Examples
+
+### Basic SSH Access
 ```bash
+# Authenticate with Boundary
 export BOUNDARY_ADDR="https://your-cluster.boundary.hashicorp.cloud"
-boundary authenticate password -auth-method-id your-auth-method-id -login-name your-username
-```
+boundary authenticate password -auth-method-id <auth-method-id> -login-name admin
 
-### SSH Access
-
-Connect to infrastructure via SSH:
-
-```bash
-# SSH to DC1 servers
-boundary connect ssh -target-id <dc1-servers-ssh-target-id>
-
-# SSH to DC1 clients  
-boundary connect ssh -target-id <dc1-clients-ssh-target-id>
+# SSH to any discovered target
+boundary connect ssh -target-id <target-id-from-list>
 
 # SSH to specific host (if multiple available)
 boundary connect ssh -target-id <target-id> -host-id <specific-host-id>
 ```
 
-### Direct Infrastructure Access
-
-For accessing web UIs, use the infrastructure's load balancer endpoints directly or SSH port forwarding:
-
+### Port Forwarding for UIs
 ```bash
-# SSH with port forwarding for Consul UI
-boundary connect ssh -target-id <dc1-servers-ssh-target-id> -- -L 8500:localhost:8500
+# Access Consul UI via SSH tunnel
+boundary connect ssh -target-id <dc1-servers-target-id> -- -L 8500:localhost:8500
+# Then access http://localhost:8500
 
-# SSH with port forwarding for Nomad UI  
-boundary connect ssh -target-id <dc1-servers-ssh-target-id> -- -L 4646:localhost:4646
+# Access Nomad UI via SSH tunnel
+boundary connect ssh -target-id <dc1-servers-target-id> -- -L 4646:localhost:4646
+# Then access http://localhost:4646
+
+# Access multiple services
+boundary connect ssh -target-id <target-id> -- -L 8500:localhost:8500 -L 4646:localhost:4646
 ```
 
-### Get Connection Commands
-
-The Terraform output provides ready-to-use connection commands:
-
+### Infrastructure Management
 ```bash
-# View all connection commands
-terraform output connection_commands
+# SSH to server for cluster management
+boundary connect ssh -target-id <dc1-servers-target-id>
 
-# View discovered infrastructure
-terraform output discovered_infrastructure
-
-# View target information
-terraform output boundary_targets
+# Once connected, use Consul/Nomad commands
+consul members
+nomad node status
+systemctl status consul
 ```
 
-## Configuration Details
+## Infrastructure Discovery
 
-### Automatic Infrastructure Discovery
+The integration automatically discovers your infrastructure using GCP APIs:
 
-The integration automatically discovers your infrastructure using the same gcloud commands as the main project:
-
+### Discovery Process
 ```bash
 # Server discovery
 gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)'
@@ -207,95 +237,148 @@ gcloud compute instances list --filter='name~hashi-server' --format='value(EXTER
 gcloud compute instances list --filter='name~hashi-clients' --format='value(EXTERNAL_IP)'
 ```
 
-### Host Catalogs and Sets
-
-**Host Catalogs**: Container for organizing hosts by cluster
-- `dc1_host_catalog`: Contains all DC1 infrastructure
-- `dc2_host_catalog`: Contains all DC2 infrastructure (if deployed)
-
-**Host Sets**: Logical groupings of hosts for targeting
-- `dc1_servers`: All DC1 Consul/Nomad server nodes
-- `dc1_clients`: All DC1 Nomad client nodes
-- Similar sets for DC2 if deployed
-
-### Credential Management
-
-**SSH Credential Store**: Stores SSH private keys for authentication
-- Automatically injects SSH credentials during connections
-- Uses the same SSH key that was used for infrastructure deployment
-- Credentials are securely managed and never exposed
+### Organizational Structure
+```
+Global Scope
+├── Development Org
+│   ├── DC1 Development Project
+│   │   ├── DC1 Host Catalog
+│   │   ├── SSH Credential Store
+│   │   └── Access Targets:
+│   │       ├── dc1-servers-ssh (3 server nodes)
+│   │       └── dc1-clients-ssh (2-4 client nodes)
+│   └── DC2 Development Project
+│       └── Similar structure for DC2 infrastructure
+└── Operations Org
+    ├── DC1 Production Project  
+    └── DC2 Production Project
+```
 
 ### Target Types
-
-**SSH Targets**: For shell access to instances
-- Default port: 22
-- Automatic credential injection
-- Session recording (if enabled)
-- Direct access to servers and clients
+- **Server Targets**: Access to Consul/Nomad server nodes for cluster management
+- **Client Targets**: Access to Nomad client nodes for application troubleshooting
+- **Automatic Grouping**: Servers and clients are automatically grouped by datacenter
 
 ## Security Features
 
-**Access Control:**
-- Role-based permissions for different user types
-- Project-level isolation between development and production
-- Credential injection eliminates need for key distribution
+### Access Control
+- **Role-based permissions** for different user types (admin, developer, operator)
+- **Project-level isolation** between development and production environments
+- **Credential injection** eliminates need for SSH key distribution
+- **Session-based access** with automatic credential cleanup
 
-**Audit and Compliance:**
-- All access sessions are logged and auditable
-- Session recording capabilities (configurable)
-- Integration with SIEM systems via audit logs
+### Audit and Compliance
+- **Complete audit trail** of all access sessions
+- **Session recording** capabilities (configurable)  
+- **Integration with SIEM** systems via structured audit logs
+- **Just-in-time access** with credential rotation support
 
-**Network Security:**
-- No direct network exposure of infrastructure
-- All access goes through Boundary proxy
-- Encrypted tunnels for all connections
+### Network Security
+- **Zero network exposure** of infrastructure SSH ports
+- **Encrypted tunnels** for all connections via Boundary proxy
+- **No VPN required** reducing network attack surface
+- **Dynamic host discovery** with automatic target updates
+
+## Verification Commands
+
+### Check Boundary Configuration
+```bash
+# List all targets
+boundary targets list -scope-id <project-scope-id>
+
+# Check specific target details
+boundary targets read -id <target-id>
+
+# List host catalogs
+boundary host-catalogs list -scope-id <project-scope-id>
+
+# Check credential stores
+boundary credential-stores list -scope-id <project-scope-id>
+```
+
+### Test Infrastructure Access
+```bash
+# Test direct SSH (should work before Boundary)
+ssh debian@$(gcloud compute instances list --filter='name~hashi-server' --format='value(natIP)' --limit=1)
+
+# Test Boundary SSH
+boundary connect ssh -target-id <target-id>
+
+# Test port forwarding
+boundary connect ssh -target-id <target-id> -- -L 8500:localhost:8500
+```
+
+### Check Discovery Status
+```bash
+# View discovered infrastructure
+terraform output discovered_infrastructure
+
+# View target mappings
+terraform output boundary_targets
+
+# View connection commands
+terraform output connection_commands
+```
 
 ## Troubleshooting
 
-**Common Issues:**
+### Common Issues
 
-1. **Authentication Failures**: Verify boundary admin password and auth method ID
-2. **Host Discovery Issues**: Check GCP permissions and project configuration
-3. **SSH Connection Failures**: Verify SSH private key matches deployed public key
-4. **Empty Host Lists**: Ensure infrastructure is deployed and instances are running
+**SSH Connection Failures:**
+- Ensure SSH keys are properly configured in Terraform Cloud workspace
+- Verify `ssh_public_key` matches the private key used for credential injection
+- Test direct SSH access before using Boundary
 
-**Useful Commands:**
+**Authentication Issues:**
+- Verify Boundary admin credentials and auth method ID
+- Check HCP client credentials for API access
+- Ensure boundary_admin_password environment variable is set
 
+**Target Discovery Issues:**
+- Verify GCP permissions for instance listing
+- Check that infrastructure is deployed and instances are running
+- Refresh discovery with `task -t tasks/boundary-auto.yml boundary:update-discovery`
+
+**Credential Injection Failures:**
+- Ensure SSH private key format includes proper headers and newlines
+- Verify private key matches the public key deployed to infrastructure
+- Check that credential store is properly configured
+
+### Debug Commands
 ```bash
-# Check Boundary authentication
-boundary authenticate password -auth-method-id <auth-method> -login-name <username>
+# Test gcloud infrastructure discovery
+gcloud compute instances list --filter='name~hashi-server'
+gcloud compute instances list --filter='name~hashi-clients'
 
-# List available targets
-boundary targets list -scope-id <project-scope-id>
-
-# Check host catalog status
-boundary host-catalogs list -scope-id <project-scope-id>
-
-# View specific target details
-boundary targets read -id <target-id>
-```
-
-**Debugging Infrastructure Discovery:**
-
-```bash
-# Test gcloud commands manually
-gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)'
-gcloud compute instances list --filter='name~hashi-clients' --format='value(EXTERNAL_IP)'
+# Test Boundary authentication
+boundary authenticate password -auth-method-id <auth-method> -login-name admin
 
 # Check Terraform external data sources
+cd boundary/terraform
 terraform console
 > data.external.dc1_server_ips[0].result
 > data.external.dc1_client_ips[0].result
+
+# Verify SSH key format
+cat ~/.ssh/id_rsa | head -1  # Should show -----BEGIN OPENSSH PRIVATE KEY-----
 ```
+
+### Getting Help
+
+1. **Check prerequisites**: Ensure all required variables are configured
+2. **Verify infrastructure**: Confirm HashiStack clusters are deployed and accessible
+3. **Test incrementally**: Test SSH access directly before using Boundary
+4. **Review logs**: Check Terraform apply output for discovery and configuration errors
 
 ## Advanced Configuration
 
-### Multi-Region Deployment
-
-For multi-region deployments, adjust the DC2 configuration:
-
+### Multi-Datacenter Setup
 ```hcl
+# Enable both datacenters
+dc1_deployed = true
 dc2_deployed = true
+
+# Configure remote state for DC2
 dc2_remote_state_config = {
   organization = "your-hcp-terraform-org"
   workspaces = {
@@ -305,118 +388,35 @@ dc2_remote_state_config = {
 ```
 
 ### Custom IP Overrides
-
-Override automatic discovery with manual IP lists:
-
 ```hcl
+# Override automatic discovery
 dc1_server_ips = ["10.0.1.10", "10.0.1.11", "10.0.1.12"]
 dc1_client_ips = ["10.0.2.10", "10.0.2.11"]
+dc2_server_ips = ["10.1.1.10", "10.1.1.11", "10.1.1.12"]
+dc2_client_ips = ["10.1.2.10", "10.1.2.11"]
 ```
 
-### Additional Roles and Permissions
-
-Customize roles by modifying the grant strings in `main.tf`:
-
+### Custom Roles and Permissions
 ```hcl
-resource "boundary_role" "custom_role" {
-  name        = "Custom Role"
-  description = "Custom permissions"
-  scope_id    = "global"
+# Add custom role for specific access patterns
+resource "boundary_role" "devops_role" {
+  name        = "DevOps Role"
+  description = "DevOps team access to all infrastructure"
+  scope_id    = boundary_scope.dev_project.id
   grant_strings = [
     "ids=*;type=target;actions=authorize-session",
-    "ids=*;type=session;actions=read,cancel"
+    "ids=*;type=session;actions=read,cancel",
+    "ids=*;type=host;actions=read"
   ]
 }
 ```
 
-## Troubleshooting
-
-### SSH Connection Issues
-
-**Problem**: `boundary connect ssh` fails with "Connection closed by 127.0.0.1"
-
-**Root Cause**: SSH keys not configured in HashiStack infrastructure
-
-**Solution**: Ensure these variables are configured in your Terraform Cloud workspace:
-```bash
-ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2E... your-public-key"
-ssh_private_key = "-----BEGIN PRIVATE KEY-----\n..." # Sensitive
-```
-
-Then redeploy infrastructure:
-```bash
-task deploy-dc1  # or deploy-dc2
-```
-
-**Verification**: Test direct SSH access first:
-```bash
-ssh debian@$(gcloud compute instances list --filter='name~hashi-server' --format='value(natIP)' --limit=1)
-```
-
-### Target Discovery Issues
-
-**Problem**: No targets discovered or targets show wrong IPs
-
-**Solutions**:
-1. **Check gcloud authentication**:
-   ```bash
-   gcloud auth list
-   gcloud config set project your-project-id
-   ```
-
-2. **Verify instance naming**:
-   ```bash
-   gcloud compute instances list --filter='name~hashi-server'
-   gcloud compute instances list --filter='name~hashi-clients'
-   ```
-
-3. **Force refresh target discovery**:
-   ```bash
-   task -t tasks/boundary-auto.yml update-discovery
-   ```
-
-### Credential Store Issues
-
-**Problem**: SSH private key not working for credential injection
-
-**Solutions**:
-1. **Verify key format**: Ensure private key includes proper headers and newlines
-2. **Test key locally**: 
-   ```bash
-   ssh -i /path/to/private-key debian@server-ip
-   ```
-3. **Check sensitive variable**: Ensure `ssh_private_key` is marked as sensitive in Terraform Cloud
-
-### Authentication Issues
-
-**Problem**: Boundary authentication failures
-
-**Solutions**:
-1. **Check credentials**:
-   ```bash
-   boundary authenticate password -auth-method-id=$BOUNDARY_AUTH_METHOD_ID -login-name=admin
-   ```
-
-2. **Verify environment variables**:
-   ```bash
-   echo $BOUNDARY_ADDR
-   echo $BOUNDARY_AUTH_METHOD_ID
-   ```
-
-3. **Test HCP credentials**:
-   ```bash
-   curl -X POST https://auth.hashicorp.com/oauth/token \
-     -d grant_type=client_credentials \
-     -d client_id=$HCP_CLIENT_ID \
-     -d client_secret=$HCP_CLIENT_SECRET
-   ```
-
 ## Integration with CI/CD
 
-The Boundary integration can be automated in CI/CD pipelines:
+Automate Boundary deployment in your CI/CD pipelines:
 
 ```yaml
-# Example GitHub Actions workflow
+# GitHub Actions example
 - name: Deploy Boundary Integration
   run: |
     cd boundary/terraform
@@ -425,6 +425,19 @@ The Boundary integration can be automated in CI/CD pipelines:
     terraform apply -auto-approve
   env:
     TF_VAR_boundary_admin_password: ${{ secrets.BOUNDARY_PASSWORD }}
+    TF_VAR_hcp_client_secret: ${{ secrets.HCP_CLIENT_SECRET }}
+    TF_VAR_ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
 ```
 
-This integration provides secure, auditable, and automated access to your HashiStack infrastructure while maintaining enterprise security standards and compliance requirements.
+## Success Criteria
+
+- ✅ **Infrastructure discovered** automatically via GCP APIs
+- ✅ **Host catalogs created** for DC1 and DC2 (if deployed)
+- ✅ **SSH targets configured** with automatic credential injection
+- ✅ **Role-based access** implemented for different user types
+- ✅ **SSH connectivity working** via Boundary proxy
+- ✅ **Port forwarding functional** for UI access
+- ✅ **Audit logging enabled** for all access sessions
+- ✅ **Zero SSH key distribution** with secure credential injection
+
+This integration provides enterprise-grade secure access to your HashiStack infrastructure while maintaining complete audit trails and eliminating traditional SSH key management challenges.

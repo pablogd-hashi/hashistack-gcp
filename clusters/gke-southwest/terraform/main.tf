@@ -116,6 +116,9 @@ resource "google_container_cluster" "primary" {
       recurrence = "FREQ=WEEKLY;BYDAY=SA,SU"
     }
   }
+
+  # Allow cluster deletion
+  deletion_protection = false
 }
 
 # Node pool
