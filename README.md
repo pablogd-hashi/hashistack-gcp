@@ -1,317 +1,287 @@
 # HashiCorp Enterprise Stack on Google Cloud Platform
 
-## Overview
+Deploy a complete HashiCorp Consul Enterprise and Nomad Enterprise ecosystem on GCP for demos and proof-of-concepts.
 
-A demonstration deployment of HashiCorp Consul Enterprise and Nomad Enterprise on Google Cloud Platform with monitoring, security, and enterprise features. 
-This repository provides infrastructure-as-code for deploying a complete HashiCorp stack ONLY for demo and PoC purposes. Do not deploy this in Production.
+## Why This Repository?
 
-### What This Repository Deploys
+This repository automates the deployment of a production-like HashiCorp stack on GCP, complete with:
+- Enterprise security features (ACLs, TLS, service mesh)
+- Monitoring and observability (Prometheus, Grafana, Traefik)
+- Multi-datacenter capabilities with cluster peering
+- Admin partitions for multi-tenancy
+- Infrastructure automation with HashiCorp Boundary
 
-This repository creates a complete HashiCorp enterprise ecosystem on GCP including:
+**⚠️ For demo and PoC purposes only - not for production use**
 
-**Core Infrastructure:**
-- 3 x Consul/Nomad server nodes (combined server architecture)
-- 2-4 x Nomad client nodes for application workloads
-- GCP Load Balancers with DNS integration
-
-**HashiCorp Services:**
-- Consul Enterprise 1.21.0+ent with ACLs and TLS
-- Nomad Enterprise 1.10.3+ent with ACLs and secure variables
-- Consul Connect service mesh for zero-trust networking
-**Applications and Monitoring:**
-- Traefik v3.0 API Gateway and load balancer
-- Prometheus metrics collection
-- Grafana dashboards and alerting
-- Demo applications (Terramino game, fake services)
-
-**Security Features:**
-- Enterprise ACLs for both Consul and Nomad
-- TLS encryption for all HashiCorp services
-- Service mesh with Consul Connect
-- Firewall rules and network segmentation
-
-# High Level Architecture
+## Architecture Overview
 
 ![HLD](./docs/images/architecture-diagram.png)
 
+**Components:**
+- **Packer**: Builds custom VM images with HashiCorp tools pre-installed
+- **Terraform**: Deploys infrastructure (networking, compute, load balancers)
+- **Taskfile**: Orchestrates the entire deployment workflow
+- **Consul Enterprise**: Service discovery, configuration, and service mesh
+- **Nomad Enterprise**: Workload orchestration and scheduling
 
 ## Prerequisites
 
+### Required Tools
 
-**Required Tools:**
-- Terraform >= 1.0.0
-- Google Cloud SDK (gcloud) authenticated
-- Packer >= 1.8.0 (for custom image builds)
-- kubectl (for GKE components)
-- Task ([(https://taskfile.dev/)]) 
-   
-**Required Permissions:**
-- GCP Project Owner or Editor role
-- Ability to create compute instances, networks, and load balancers
-- DNS zone management (if using custom domains)
+| Tool | Minimum Version | Installation |
+|------|----------------|--------------|
+| **Task** | v3.0+ | `brew install go-task` or [install guide](https://taskfile.dev/installation/) |
+| **Terraform** | v1.5+ | `brew install terraform` or [download](https://www.terraform.io/downloads) |
+| **Packer** | v1.9+ | `brew install packer` or [download](https://www.packer.io/downloads) |
+| **Google Cloud SDK** | Latest | `brew install google-cloud-sdk` or [install guide](https://cloud.google.com/sdk/docs/install) |
+| **kubectl** | v1.25+ | `brew install kubectl` (for GKE features) |
 
-**Required Licenses:**
-- Consul Enterprise license ( only if using admin-partitions or CTS)
-- Nomad Enterprise license ( optional if not using namespaces but recommended)
+### GCP Setup
 
-**GCP Setup:**
-- GCP project with billing enabled
-- Compute Engine API enabled
-- DNS API enabled (if using custom domains)
-- Service account with appropriate permissions
+1. **Authenticate with Google Cloud:**
+   ```bash
+   gcloud auth login
+   gcloud config set project YOUR_PROJECT_ID
+   ```
 
-## How to run in tasks
+2. **Enable required APIs:**
+   ```bash
+   gcloud services enable compute.googleapis.com
+   gcloud services enable dns.googleapis.com
+   gcloud services enable container.googleapis.com
+   ```
 
-### 1. Configure Variable Sets (HCP Terraform) or terraform.auto.tfvars
+3. **Required IAM permissions:**
+   - Compute Admin
+   - DNS Administrator (if using custom domains)
+   - Kubernetes Engine Admin (for GKE features)
 
-If using HCP Terraform, create these variable sets:
+### Enterprise Licenses
 
-**HashiStack Common Variables:**
-```
+- **Consul Enterprise license** (required for admin partitions and CTS)
+- **Nomad Enterprise license** (optional but recommended)
+
+## Quick Start
+
+### 1. Configure Variables
+
+Set up your Terraform variables. You can use either HCP Terraform variable sets or local `.tfvars` files.
+
+**Create variable sets in HCP Terraform or add to `terraform.auto.tfvars`:**
+
+```hcl
+# Project Configuration
+gcp_project = "your-gcp-project-id"
+gcp_region = "europe-north1"
+cluster_name = "demo-hashistack"
+
+# Enterprise Licenses
 consul_license = "your-consul-enterprise-license"
 nomad_license = "your-nomad-enterprise-license"
-consul_version = "1.21.0+ent"
-nomad_version = "1.10.3+ent"
-consul_bootstrap_token = "ConsulR0cks" # Change in production
-enable_acls = true
-```
-**only if using boundary**
-```
-boundary_addr="https://YOUR-BOUNDARY-CLUSTER.boundary.hashicorp.cloud"
-boundary_auth_method_id="your-auth-method-id"
-boundary_admin_login_name="admin"
-boundary_admin_password="your-boundary-password"
-```
 
-**GCP Common Variables:**
-```
-gcp_project = "your-gcp-project-id"  
-gcp_region = "europe-north1"
-machine_type_server = "e2-standard-2"
-machine_type_client = "e2-standard-4"
-```
-
-**SSH Access Variables (REQUIRED):**
-```
+# SSH Access (REQUIRED)
 ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2E... your-public-key"
-ssh_private_key = "-----BEGIN PRIVATE KEY-----\n..." # For Boundary integration
-ssh_username = "debian" # Default, can be customized
+ssh_username = "debian"
+
+# Optional: Custom DNS
+dns_zone = "your-dns-zone-name"
 ```
 
-**Workspace-Specific Variables:**
-```
-dns_zone = "your-dns-zone-name" # Optional
-cluster_name = "your-cluster-name"
-```
+### 2. Build Images
 
-If not using HCP Terraform, create `terraform.auto.tfvars` files in each cluster directory with these variables.
-
-### 2. Build Custom Images (Required)
-
-Build HashiCorp images with Packer before deploying infrastructure:
+Build custom VM images with HashiCorp tools pre-installed:
 
 ```bash
 # Build images for your GCP project
 task build-images
-
-# Or manually:
-cd packer/gcp
-packer build .
 ```
 
-This creates custom images with Consul and Nomad pre-installed and configured.
+This step is **required** before deploying infrastructure.
 
 ### 3. Deploy Infrastructure
 
-Choose your deployment approach:
+Choose your deployment strategy:
 
-**Single Cluster (DC1):**
+**Single datacenter:**
 ```bash
 task deploy-dc1
 ```
 
-**Multi-Cluster (DC1 + DC2):**
+**Multi-datacenter:**
 ```bash
-task deploy-both
+task deploy-both-dc
 ```
 
-**With Applications:**
+**Complete deployment with monitoring:**
 ```bash
 task deploy-dc1
 task deploy-monitoring-dc1
-task deploy-traefik-dc1
-task deploy-demo-apps-dc1
 ```
 
-### 4. Post-Deployment Configuration (REQUIRED)
+### 4. Configure Environment
 
-After deploying clusters, complete these **critical** configuration steps:
+After deployment, set up your environment variables:
 
-#### 4.1 Setup Environment Variables
-
-**Export environment variables to connect to your clusters:**
 ```bash
-# Get environment variables for both clusters
-task eval-both
+# Get environment variables for your cluster
+task eval-dc1
 
 # Copy and paste the output into your shell
 # This configures CONSUL_HTTP_ADDR, CONSUL_HTTP_TOKEN, NOMAD_ADDR, NOMAD_TOKEN
 ```
 
-**Note**: SSH access requires the `ssh_public_key` and `ssh_private_key` variables to be configured in your Terraform Cloud workspace. Without these, you cannot SSH directly to instances or use Boundary SSH connections.
+### 5. Complete Setup
 
-#### 4.2 Configure Nomad-Consul Integration
-Once you've exported your variables ( eval_vars) in your terminal, run:
+Configure Nomad-Consul integration:
 
-```
-nomad setup consul -y
-```
-
-#### 4.2 Authenticate to Nomad UI
-
-**For UI access, authenticate with Nomad:**
 ```bash
-# This opens the browser and authenticates using your NOMAD_TOKEN
+# Run this after setting environment variables
+nomad setup consul -y
+
+# Authenticate to Nomad UI
 nomad ui -authenticate
 ```
 
-These steps are **required** before setting up cluster peering or deploying applications that use service mesh features.
+## Deployment Workflows
 
-
-### Multi-Cluster Peering
-
-For federating multiple Consul datacenters with cluster peering:
-
-**Documentation:** [`consul/peering/README.md`](consul/peering/README.md)
-
-**Quick Start:**
-```
-# Setup peering
-task peering:setup
-task peering:establish
-task peering:complete
-```
-
-### Admin Partitions (Multi-Tenancy)
-
-For deploying Consul Enterprise admin partitions on GKE:
-
-**Documentation:** [`consul/admin-partitions/README.md`](consul/admin-partitions/README.md)
-
-**Quick Start:**
+### Basic Workflow
 ```bash
-# Deploy base infrastructure
-task deploy-dc1
-
-# Deploy GKE clusters with admin partitions
-task deploy-all-gke
-task gke-setup-secrets
-task gke-deploy-consul
+task build-images      # Build custom images
+task deploy-dc1        # Deploy infrastructure
+task eval-dc1          # Get connection details
+# Copy environment variables to your shell
+nomad setup consul -y  # Configure integration
 ```
 
-### Consul Terraform Sync (CTS)
-
-For infrastructure automation with Consul-Terraform-Sync:
-
-**Documentation:** [`consul/cts/README.md`](consul/cts/README.md)
-
-**Features:**
-- Automated DNS updates based on service registration
-- Infrastructure provisioning triggered by service changes
-- Integration with external systems
-
-### Boundary Integration (Optional)
-
-For secure remote access to infrastructure with HashiCorp Boundary:
-
-**Documentation:** [`boundary/README.md`](boundary/README.md)
-
-#### Prerequisites:
-1. **HCP Boundary cluster** running and accessible
-2. **SSH keys** configured in Terraform Cloud workspace variables:
-   - `ssh_public_key` - Your SSH public key content (required for all clusters)
-   - `ssh_private_key` - Your SSH private key content (sensitive, required for Boundary)
-   - `ssh_username` - SSH username (defaults to "debian")
-
-
-#### Automated Deployment:
+### Advanced Multi-Cluster
 ```bash
-# Complete automated setup (recommended)
-task -t tasks/boundary-auto.yml setup-full
-
-# Or step-by-step:
-task -t tasks/boundary-auto.yml discover-targets    # Auto-discover infrastructure
-task -t tasks/boundary-auto.yml deploy-complete     # Deploy with credential injection
-task -t tasks/boundary-auto.yml list-all-targets    # List all configured targets
+task build-images      # Build custom images
+task deploy-both-dc    # Deploy both datacenters
+task eval-both         # Get connection details for both clusters
+# Set up cluster peering
+task -t consul/peering/Taskfile.yml consul:deploy-all
 ```
 
-#### Quick Connection Examples:
+### With Admin Partitions
 ```bash
-# Connect to DC1 server via Boundary
-task -t tasks/boundary-auto.yml connect-dc1-server
-
-# Connect to DC2 client via Boundary  
-task -t tasks/boundary-auto.yml connect-dc2-client
-
-# Manual connection using target ID
-boundary connect ssh -target-id <target-id>
+task build-images      # Build custom images
+task deploy-dc1        # Deploy base infrastructure
+task deploy-both-gke   # Deploy GKE clusters
+# Set up admin partitions
+task -t consul/admin-partitions/Taskfile.yml consul:deploy-all
 ```
 
-**Features:**
-- **Auto-discovery** of all DC1 and DC2 infrastructure (servers + clients)
-- **Automatic credential injection** using workspace SSH keys
-- **Target management** with host catalogs and credential stores
-- **Quick connection helpers** for common access patterns
+## Available Tasks
 
+### Infrastructure Management
+- `task build-images` - Build HashiStack images with Packer
+- `task deploy-dc1` - Deploy primary datacenter
+- `task deploy-dc2` - Deploy secondary datacenter
+- `task deploy-both-dc` - Deploy both datacenters
+- `task destroy-dc1` - Destroy primary datacenter
+- `task status` - Show cluster status
 
+### Application Deployment
+- `task deploy-monitoring-dc1` - Deploy Prometheus + Grafana
+- `task deploy-traefik-dc1` - Deploy Traefik load balancer
 
-## Common Commands
+### Cluster Operations
+- `task eval-dc1` - Get environment variables for DC1
+- `task eval-both` - Get environment variables for both clusters
+- `task ssh-dc1-server` - SSH to DC1 server node
+- `task show-dc1-info` - Show DC1 cluster information
+- `task get-all-ips` - Get all server and client IPs
 
-**Infrastructure Management:**
-```bash
-task deploy-dc1              # Deploy primary cluster
-task deploy-dc2              # Deploy secondary cluster  
-task deploy-both             # Deploy both clusters
-task destroy-dc1             # Destroy primary cluster
-task status                  # Check cluster status
-```
+### Advanced Features
+- `task -t consul/peering/Taskfile.yml help` - Cluster peering commands
+- `task -t consul/admin-partitions/Taskfile.yml help` - Admin partitions commands
+- `task -t tasks/boundary-auto.yml help` - Boundary integration commands
 
-**Application Deployment:**
-```bash
-task deploy-monitoring       # Deploy Prometheus + Grafana
-task deploy-traefik         # Deploy Traefik load balancer
-task deploy-demo-apps       # Deploy sample applications
-```
+## Access Your Services
 
-**Cluster Operations:**
-```bash
-task get-server-ips         # Get instance IP addresses
-task ssh-dc1-server         # SSH to DC1 server
-task show-urls              # Display all service URLs
-task eval-vars              # Show environment variables
-```
-
-**Peering and Federation:**
-```bash
-task peering:setup          # Initialize cluster peering
-task peering:establish      # Create peering connection
-task peering:verify         # Verify peering status
-```
-
-## Access Points
-
-After deployment, services are accessible at:
+After deployment, access your services:
 
 **HashiCorp UIs:**
-- Consul: `http://consul.your-domain.com:8500` or load balancer IP
-- Nomad: `http://nomad.your-domain.com:4646` or load balancer IP
+- **Consul**: `http://<server-ip>:8500`
+- **Nomad**: `http://<server-ip>:4646`
 
 **Monitoring:**
-- Grafana: `http://grafana.your-domain.com:3000` (admin/admin)
-- Prometheus: `http://prometheus.your-domain.com:9090`
-- Traefik: `http://traefik.your-domain.com:8080`
+- **Grafana**: `http://<client-ip>:3000` (admin/admin)
+- **Prometheus**: `http://<client-ip>:9090`
+- **Traefik**: `http://<client-ip>:8080`
 
-**Applications:**
-- Terramino Game: `http://terramino.your-domain.com`
-- Demo Services: Various ports on client load balancer
+**Get service URLs:**
+```bash
+task show-dc1-info    # Shows all URLs and connection details
+```
 
+## Advanced Features
+
+### Cluster Peering
+Set up secure communication between multiple datacenters:
+```bash
+task -t consul/peering/Taskfile.yml consul:deploy-all
+```
+📖 **Documentation:** [`consul/peering/README.md`](consul/peering/README.md)
+
+### Admin Partitions
+Deploy multi-tenant Consul partitions on GKE:
+```bash
+task -t consul/admin-partitions/Taskfile.yml consul:deploy-all
+```
+📖 **Documentation:** [`consul/admin-partitions/README.md`](consul/admin-partitions/README.md)
+
+### Boundary Integration
+Secure remote access to infrastructure:
+```bash
+task -t tasks/boundary-auto.yml boundary:setup-full
+```
+📖 **Documentation:** [`boundary/README.md`](boundary/README.md)
+
+### Consul-Terraform-Sync
+Infrastructure automation based on service changes:
+📖 **Documentation:** [`consul/cts/README.md`](consul/cts/README.md)
+
+## Troubleshooting
+
+### Common Issues
+
+**Packer build fails:**
+- Ensure GCP APIs are enabled
+- Check GCP credentials: `gcloud auth list`
+- Verify project permissions
+
+**Terraform apply fails:**
+- Check variable configuration
+- Ensure enterprise licenses are valid
+- Verify GCP quotas and limits
+
+**Cannot access services:**
+- Run `task eval-dc1` and copy environment variables
+- Check firewall rules in GCP Console
+- Verify instances are running: `task status`
+
+**SSH access issues:**
+- Ensure `ssh_public_key` is configured in variables
+- Check GCP instance metadata for SSH keys
+- Use `task ssh-dc1-server` for direct access
+
+### Getting Help
+
+1. **Check task help:** `task --list`
+2. **Review logs:** Check GCP Console for instance logs
+3. **Verify configuration:** Use `task status` to check cluster health
+4. **Read component docs:** Each feature has detailed README files
+
+## Architecture Details
+
+This repository implements several key patterns:
+
+- **Infrastructure as Code**: Terraform modules for repeatable deployments
+- **Immutable Infrastructure**: Packer builds base images with software pre-installed
+- **Automation**: Taskfile orchestrates complex multi-step deployments
+- **Security**: Enterprise ACLs, TLS encryption, and service mesh by default
+- **Observability**: Built-in monitoring with Prometheus and Grafana
+- **Scalability**: Multi-datacenter and multi-partition support
+
+The result is a production-like HashiCorp stack that's perfect for demos, training, and proof-of-concepts.

@@ -1,0 +1,111 @@
+version: '3'
+
+vars:
+  NOMAD_APPS_DIR: ../nomad:apps
+
+tasks:
+  help:
+    desc: "Show Nomad applications deployment guide"
+    cmds:
+      - echo " === NOMAD APPLICATIONS ==="
+      - echo ""
+      - echo "Deploy applications and monitoring stack to Nomad clusters"
+      - echo ""
+      - echo " PREREQUISITES -"
+      - echo "   DC1 and/or DC2 clusters deployed"
+      - echo "   Environment variables configured - task get-env-all"
+      - echo "   Nomad-Consul integration configured"
+      - echo ""
+      - echo " APPLICATION DEPLOYMENT -"
+      - echo "  nomad:deploy-monitoring  - Deploy monitoring stack (Traefik, Prometheus, Grafana)"
+      - echo "  nomad:deploy-fake-demo   - Deploy fake demo services (frontend/backend)"
+      - echo "  nomad:deploy-all         - Deploy all applications"
+      - echo "  nomad:status             - Show all Nomad job statuses"
+      - echo ""
+      - echo "QUICK START -"
+      - echo "  1. task get-env-all (copy vars to shell)"
+      - echo "  2. task -t tasks/nomad:apps.yml nomad:deploy-all"
+
+  nomad:deploy-monitoring:
+    desc: "Deploy monitoring stack (Traefik, Prometheus, Grafana)"
+    cmds:
+      - echo " Deploying monitoring stack..."
+      - echo "  Ensure environment variables are set - task get-env-all"
+      - echo ""
+      - echo " Deploying Traefik (Load Balancer)..."
+      - nomad run -var datacenter=$NOMAD_DATACENTER {{.NOMAD_APPS_DIR}}/monitoring/traefik.hcl
+      - echo ""
+      - echo " Deploying Prometheus (Metrics Collection)..."
+      - nomad run -var datacenter=$NOMAD_DATACENTER {{.NOMAD_APPS_DIR}}/monitoring/prometheus.hcl
+      - echo ""
+      - echo " Deploying Grafana (Monitoring Dashboard)..."
+      - nomad run -var datacenter=$NOMAD_DATACENTER {{.NOMAD_APPS_DIR}}/monitoring/grafana.hcl
+      - echo ""
+      - echo " Monitoring stack deployed successfully"
+      - echo " Access URLs: task get-urls-all"
+
+  nomad:deploy-fake-demo:
+    desc: "Deploy fake demo services (frontend/backend)"
+    cmds:
+      - echo " Deploying fake demo services..."
+      - echo "  Ensure environment variables are set - task get-env-all"
+      - echo ""
+      - echo " Deploying Frontend Service..."
+      - nomad run -var datacenter=$NOMAD_DATACENTER {{.NOMAD_APPS_DIR}}/demo-fake-service/frontend.nomad.hcl
+      - echo ""
+      - echo "  Deploying Backend Service..."
+      - nomad run -var datacenter=$NOMAD_DATACENTER {{.NOMAD_APPS_DIR}}/demo-fake-service/backend.nomad.hcl
+      - echo ""
+      - echo " Fake demo services deployed successfully"
+      - echo " Check status: task -t tasks/nomad:apps.yml nomad:status"
+
+  nomad:deploy-all:
+    desc: "Deploy all Nomad applications"
+    cmds:
+      - echo " Deploying all Nomad applications..."
+      - task: nomad:deploy-monitoring
+      - echo ""
+      - task: nomad:deploy-fake-demo
+      - echo ""
+      - echo " All Nomad applications deployed successfully"
+      - echo " Status: task -t tasks/nomad:apps.yml nomad:status"
+      - echo " URLs: task get-urls-all"
+
+  nomad:status:
+    desc: "Show all Nomad job statuses"
+    cmds:
+      - echo " === NOMAD JOBS STATUS ==="
+      - echo "  Ensure environment variables are set - task get-env-all"
+      - echo ""
+      - echo "=== All Jobs ==="
+      - nomad job status
+      - echo ""
+      - echo "=== Monitoring Jobs ==="
+      - nomad job status traefik 2>/dev/null || echo " Traefik not deployed"
+      - nomad job status prometheus 2>/dev/null || echo " Prometheus not deployed"
+      - nomad job status grafana 2>/dev/null || echo " Grafana not deployed"
+      - echo ""
+      - echo "=== Demo Applications ==="
+      - nomad job status frontend 2>/dev/null || echo " Frontend not deployed"
+      - nomad job status backend 2>/dev/null || echo " Backend not deployed"
+      - echo ""
+      - echo " Deploy applications: task -t tasks/nomad:apps.yml nomad:deploy-all"
+
+  nomad:stop-all:
+    desc: "Stop all Nomad applications"
+    cmds:
+      - echo " Stopping all Nomad applications..."
+      - echo "  This will stop all running jobs"
+      - echo ""
+      - nomad job stop traefik -purge 2>/dev/null || echo "  Traefik not running"
+      - nomad job stop prometheus -purge 2>/dev/null || echo "  Prometheus not running"
+      - nomad job stop grafana -purge 2>/dev/null || echo "  Grafana not running"
+      - nomad job stop frontend -purge 2>/dev/null || echo "  Frontend not running"
+      - nomad job stop backend -purge 2>/dev/null || echo "  Backend not running"
+      - echo ""
+      - echo " All Nomad applications stopped"
+
+  default:
+    desc: "Show help by default"
+    cmds:
+      - task: help

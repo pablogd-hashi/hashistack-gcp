@@ -1,0 +1,190 @@
+version: '3'
+
+vars:
+  GKE_WEST_DIR: ../clusters/gke-europe-west1/terraform
+  GKE_SW_DIR: ../clusters/gke-southwest/terraform
+  DC1_DIR: ../clusters/dc1/terraform
+  ADMIN_PARTITIONS_DIR: ../consul/admin-partitions
+
+tasks:
+  help:
+    desc: "Show Consul admin partitions setup guide"
+    cmds:
+      - echo "CONSUL ADMIN PARTITIONS"
+      - echo ""
+      - echo "Multi-tenant isolation within Consul datacenter using GKE clusters"
+      - echo ""
+      - echo " PREREQUISITES -"
+      - echo "   DC1 cluster deployed (Consul servers)"
+      - echo "   Consul Enterprise license configured"
+      - echo "   GKE clusters deployed"
+      - echo "   Environment variables set - task get-env-all"
+      - echo ""
+      - echo " DOCUMENTATION - consul/admin-partitions/README.md"
+      - echo ""
+      - echo " CONSUL ADMIN PARTITIONS TASKS -"
+      - echo "  consul-deploy-policies    - Create Consul ACL policies"
+      - echo "  consul-deploy-roles       - Create Consul ACL roles"
+      - echo "  consul-deploy-partitions  - Create Consul admin partitions"
+      - echo "  consul-deploy-tokens      - Create Consul partition tokens"
+      - echo "  consul-get-certificates   - Fetch CA certificates from Consul servers"
+      - echo "  consul-deploy-secrets     - Setup Kubernetes secrets for Consul"
+      - echo "  consul-deploy-gke         - Deploy Consul to GKE clusters with partitions"
+      - echo "  consul-deploy-all         - Complete Consul admin partitions setup"
+      - echo ""
+      - echo " QUICK START -"
+      - echo "  task -t consul/admin-partitions/Taskfile.yml consul:deploy-all"
+
+  "consul:deploy-policies":
+    desc: "Create Consul ACL policies"
+    cmds:
+      - echo "Creating Consul ACL policies..."
+      - echo "Ensure environment variables are set - task get-env-all"
+      - echo "Policy files location - consul/admin-partitions/policies/"
+      - echo ""
+      - echo "  Creating k8s partition admin policies..."
+      - consul acl policy create -name "k8s-west1-admin-policy" -description "Admin policy for k8s-west1 partition" -rules @consul/admin-partitions/policies/k8s-west1-admin-policy.hcl
+      - consul acl policy create -name "k8s-southwest1-admin-policy" -description "Admin policy for k8s-southwest1 partition" -rules @consul/admin-partitions/policies/k8s-southwest1-admin-policy.hcl
+      - echo ""
+      - echo "  Creating environment-specific policies..."
+      - consul acl policy create -name "k8s-west1-development-policy" -description "Development environment policy for k8s-west1" -rules @consul/admin-partitions/policies/k8s-west1-development-policy.hcl
+      - consul acl policy create -name "k8s-southwest1-development-policy" -description "Development environment policy for k8s-southwest1" -rules @consul/admin-partitions/policies/k8s-southwest1-development-policy.hcl
+      - consul acl policy create -name "k8s-west1-testing-policy" -description "Testing environment policy for k8s-west1" -rules @consul/admin-partitions/policies/k8s-west1-testing-policy.hcl
+      - consul acl policy create -name "k8s-southwest1-testing-policy" -description "Testing environment policy for k8s-southwest1" -rules @consul/admin-partitions/policies/k8s-southwest1-testing-policy.hcl
+      - consul acl policy create -name "k8s-west1-acceptance-policy" -description "Acceptance environment policy for k8s-west1" -rules @consul/admin-partitions/policies/k8s-west1-acceptance-policy.hcl
+      - consul acl policy create -name "k8s-southwest1-production-policy" -description "Production environment policy for k8s-southwest1" -rules @consul/admin-partitions/policies/k8s-southwest1-production-policy.hcl
+      - echo " Consul ACL policies created successfully"
+
+  "consul:deploy-roles":
+    desc: "Create Consul ACL roles"
+    cmds:
+      - echo " Creating Consul ACL roles..."
+      - echo "  Ensure environment variables are set - task get-env-all"
+      - echo ""
+      - echo "  Creating admin roles..."
+      - consul acl role create -name "k8s-west1-admin" -description "Admin role for k8s-west1 partition" -policy-name "k8s-west1-admin-policy"
+      - consul acl role create -name "k8s-southwest1-admin" -description "Admin role for k8s-southwest1 partition" -policy-name "k8s-southwest1-admin-policy"
+      - echo ""
+      - echo "  Creating environment-specific roles..."
+      - consul acl role create -name "k8s-west1-developer" -description "Developer role for k8s-west1 development environment" -policy-name "k8s-west1-development-policy"
+      - consul acl role create -name "k8s-southwest1-developer" -description "Developer role for k8s-southwest1 development environment" -policy-name "k8s-southwest1-development-policy"
+      - consul acl role create -name "k8s-west1-tester" -description "Tester role for k8s-west1 testing environment" -policy-name "k8s-west1-testing-policy"
+      - consul acl role create -name "k8s-southwest1-tester" -description "Tester role for k8s-southwest1 testing environment" -policy-name "k8s-southwest1-testing-policy"
+      - consul acl role create -name "k8s-west1-acceptor" -description "Acceptance role for k8s-west1 acceptance environment" -policy-name "k8s-west1-acceptance-policy"
+      - consul acl role create -name "k8s-southwest1-operator" -description "Production operator role for k8s-southwest1" -policy-name "k8s-southwest1-production-policy"
+      - echo " Consul ACL roles created successfully"
+
+  "consul:deploy-partitions":
+    desc: "Create Consul admin partitions"
+    cmds:
+      - echo " Creating Consul admin partitions..."
+      - echo "  Ensure environment variables are set - task get-env-all"
+      - echo ""
+      - consul partition create -name k8s-west1 -description "Partition for GKE Europe West1 cluster"
+      - consul partition create -name k8s-southwest1 -description "Partition for GKE Southwest cluster"
+      - echo ""
+      - echo " Verifying partitions..."
+      - consul partition list
+      - echo " Consul admin partitions created successfully"
+
+  "consul:deploy-tokens":
+    desc: "Create Consul partition tokens"
+    cmds:
+      - echo " Creating Consul partition tokens..."
+      - echo "  Ensure environment variables are set - task get-env-all"
+      - echo ""
+      - mkdir -p {{.ADMIN_PARTITIONS_DIR}}/tokens
+      - echo " Creating k8s-west1 admin token..."
+      - consul acl token create -description "Admin token for k8s-west1 partition" -role-name "k8s-west1-admin" | tee {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-west1-admin-token.txt
+      - echo " Creating k8s-southwest1 admin token..."
+      - consul acl token create -description "Admin token for k8s-southwest1 partition" -role-name "k8s-southwest1-admin" | tee {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-southwest1-admin-token.txt
+      - echo ""
+      - echo " Extracting token IDs..."
+      - cat {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-west1-admin-token.txt | grep SecretID | awk '{print $2}' > {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-west1-admin.token
+      - cat {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-southwest1-admin-token.txt | grep SecretID | awk '{print $2}' > {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-southwest1-admin.token
+      - echo " Consul partition tokens created successfully"
+
+  "consul:get-certificates":
+    desc: "Fetch CA certificates from Consul servers"
+    cmds:
+      - echo " Fetching CA certificates from Consul servers..."
+      - echo "Choose one of the following methods:"
+      - echo ""
+      - echo "Option 1 - Using Boundary SSH (if Boundary is deployed)"
+      - echo "# Get DC1 server target ID from Boundary"
+      - echo 'boundary targets list -scope-id <your-scope-id> | grep dc1.*server'
+      - echo ""
+      - echo "# Connect via Boundary and copy certificates"
+      - echo 'boundary connect ssh -target-id <dc1-server-target-id> -- "sudo cat /etc/consul.d/tls/consul-agent-ca.pem" > consul-agent-ca.pem'
+      - echo 'boundary connect ssh -target-id <dc1-server-target-id> -- "sudo cat /etc/consul.d/tls/consul-agent-ca-key.pem" > consul-agent-ca-key.pem'
+      - echo ""
+      - echo "Option 2 - Using direct SSH (if SSH keys are configured)"
+      - echo "# Get DC1 server IP address"
+      - echo 'DC1_SERVER_IP=$$(gcloud compute instances list --filter="name~hashi-server.*-50" --format="value(natIP)" --limit=1)'
+      - echo ""
+      - echo "# SSH to DC1 server and copy CA certificates"
+      - echo 'ssh debian@$$DC1_SERVER_IP "sudo cat /etc/consul.d/tls/consul-agent-ca.pem" > consul-agent-ca.pem'
+      - echo 'ssh debian@$$DC1_SERVER_IP "sudo cat /etc/consul.d/tls/consul-agent-ca-key.pem" > consul-agent-ca-key.pem'
+      - echo ""
+      - echo " After copying certificates, verify with - ls -la consul-agent-ca*.pem"
+
+  "consul:deploy-secrets":
+    desc: "Setup Kubernetes secrets for Consul"
+    cmds:
+      - echo " Setting up Kubernetes secrets for Consul..."
+      - echo "  Ensure certificates are copied first - task consul-get-certificates"
+      - echo ""
+      - echo "Setting up k8s-west1 secrets"
+      - kubectl config use-context gke-west1-context || echo "  Update context name"
+      - kubectl create namespace consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-ent-license --from-literal=key="$$CONSUL_ENT_LICENSE" -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-bootstrap-token --from-literal=token="$$(cat {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-west1-admin.token)" -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-ca-cert --from-file=tls.crt=consul-agent-ca.pem -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-ca-key --from-file=tls.key=consul-agent-ca-key.pem -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - echo ""
+      - echo "Setting up k8s-southwest1 secrets"
+      - kubectl config use-context gke-southwest1-context || echo "  Update context name"
+      - kubectl create namespace consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-ent-license --from-literal=key="$$CONSUL_ENT_LICENSE" -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-bootstrap-token --from-literal=token="$$(cat {{.ADMIN_PARTITIONS_DIR}}/tokens/k8s-southwest1-admin.token)" -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-ca-cert --from-file=tls.crt=consul-agent-ca.pem -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic consul-ca-key --from-file=tls.key=consul-agent-ca-key.pem -n consul --dry-run=client -o yaml | kubectl apply -f -
+      - echo " Kubernetes secrets configured successfully"
+
+  "consul:deploy-gke":
+    desc: "Deploy Consul to GKE clusters with partitions"
+    cmds:
+      - echo "  Deploying Consul to GKE clusters with admin partitions..."
+      - echo "  Ensure secrets are configured first - task consul-deploy-secrets"
+      - echo ""  
+      - echo " Manual steps required:"
+      - echo "1. Configure kubectl contexts for both GKE clusters"
+      - echo "2. Deploy Consul with Helm using partition-specific values"
+      - echo "3. Verify partition configuration"
+      - echo ""
+      - echo " See consul/admin-partitions/README.md for detailed instructions"
+
+  "consul:deploy-all":
+    desc: "Complete Consul admin partitions setup"
+    cmds:
+      - echo "COMPLETE CONSUL ADMIN PARTITIONS SETUP"
+      - echo ""
+      - task: "consul:deploy-policies"
+      - echo ""
+      - task: "consul:deploy-roles"
+      - echo ""
+      - task: "consul:deploy-partitions"
+      - echo ""
+      - task: "consul:deploy-tokens"
+      - echo ""
+      - echo " Consul admin partitions setup completed!"
+      - echo ""
+      - echo " Next steps:"
+      - echo "1. Get CA certificates - task -t consul/admin-partitions/Taskfile.yml consul:get-certificates"
+      - echo "2. Setup K8s secrets - task -t consul/admin-partitions/Taskfile.yml consul:deploy-secrets"
+      - echo "3. Deploy to GKE - task -t consul/admin-partitions/Taskfile.yml consul:deploy-gke"
+
+  default:
+    desc: "Show help by default"
+    cmds:
+      - task: help

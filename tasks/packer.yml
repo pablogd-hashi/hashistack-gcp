@@ -1,0 +1,74 @@
+version: '3'
+
+vars:
+  PACKER_GCP_DIR: ../packer/gcp
+  PACKER_AWS_DIR: ../packer/aws
+
+tasks:
+  help:
+    desc: "Show Packer image building guide"
+    cmds:
+      - echo " === PACKER IMAGE BUILDING ==="
+      - echo ""
+      - echo "Build custom HashiStack images with Consul and Nomad pre-installed"
+      - echo ""
+      - echo " PREREQUISITES -"
+      - echo "   Packer >= 1.8.0 installed"
+      - echo "   GCP credentials configured (for GCP builds)"
+      - echo "   AWS credentials configured (for AWS builds)"
+      - echo "   Valid enterprise licenses in Terraform variables"
+      - echo ""
+      - echo " BUILD TASKS -"
+      - echo "  packer:build-gcp     - Build HashiStack images for GCP"
+      - echo "  packer:build-aws     - Build HashiStack images for AWS"
+      - echo "  packer:build-all     - Build images for all platforms"
+      - echo "  packer:status        - Show available images"
+      - echo ""
+      - echo "QUICK START -"
+      - echo "  task -t tasks/packer.yml packer:build-gcp"
+
+  packer:build-gcp:
+    desc: "Build HashiStack images for GCP"
+    dir: "{{.PACKER_GCP_DIR}}"
+    cmds:
+      - echo " Building HashiStack images for GCP..."
+      - echo " Images will include: Consul Enterprise + Nomad Enterprise"
+      - packer init .
+      - packer build .
+      - echo " GCP HashiStack images built successfully"
+
+  packer:build-aws:
+    desc: "Build HashiStack images for AWS"
+    dir: "{{.PACKER_AWS_DIR}}"
+    cmds:
+      - echo " Building HashiStack images for AWS..."
+      - echo " Images will include: Consul Enterprise + Nomad Enterprise"
+      - packer init .
+      - packer build .
+      - echo " AWS HashiStack images built successfully"
+
+  packer:build-all:
+    desc: "Build images for all platforms"
+    cmds:
+      - echo " Building HashiStack images for all platforms..."
+      - task: packer:build-gcp
+      - task: packer:build-aws
+      - echo " All HashiStack images built successfully"
+
+  packer:status:
+    desc: "Show available images"
+    cmds:
+      - echo " === AVAILABLE HASHISTACK IMAGES ==="
+      - echo ""
+      - echo "=== GCP Images ==="
+      - gcloud compute images list --filter="family=hashistack" --format="table(name,family,creationTimestamp)" 2>/dev/null || echo " No GCP images found or gcloud not configured"
+      - echo ""
+      - echo "=== AWS Images ==="
+      - aws ec2 describe-images --owners self --filters "Name=name,Values=*hashistack*" --query 'Images[*].{Name:Name,ImageId:ImageId,CreationDate:CreationDate}' --output table 2>/dev/null || echo " No AWS images found or AWS CLI not configured"
+      - echo ""
+      - echo " Build images with: task -t tasks/packer.yml packer:build-gcp"
+
+  default:
+    desc: "Show help by default"
+    cmds:
+      - task: help

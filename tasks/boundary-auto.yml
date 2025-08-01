@@ -9,79 +9,79 @@ tasks:
   help:
     desc: "Show automated Boundary deployment and management guide"
     cmds:
-      - echo "🤖 === AUTOMATED BOUNDARY DEPLOYMENT ==="
+      - echo " === AUTOMATED BOUNDARY DEPLOYMENT ==="
       - echo ""
       - echo "Fully automated Boundary setup with target discovery and credential injection"
       - echo ""
-      - echo "📋 PREREQUISITES -"
-      - echo "  ✅ DC1 and/or DC2 clusters deployed"
-      - echo "  ✅ Environment variables configured - task eval-both"
-      - echo "  ✅ HCP Boundary cluster running"
-      - echo "  ✅ SSH public key configured in Terraform workspace variables"
+      - echo " PREREQUISITES -"
+      - echo "   DC1 and/or DC2 clusters deployed"
+      - echo "   Environment variables configured - task eval-both"
+      - echo "   HCP Boundary cluster running"
+      - echo "   SSH public key configured in Terraform workspace variables"
       - echo ""
-      - echo "📖 DOCUMENTATION - boundary/README.md"
+      - echo " DOCUMENTATION - boundary/README.md"
       - echo ""
-      - echo "🚀 AUTOMATED DEPLOYMENT -"
-      - echo "  setup-full        - Complete automated setup (recommended)"
-      - echo "  discover-targets  - Auto-discover infrastructure targets"
-      - echo "  inject-credentials - Auto-inject SSH credentials"
-      - echo "  deploy-complete   - Deploy with full automation"
+      - echo " AUTOMATED DEPLOYMENT -"
+      - echo "  boundary:setup-full        - Complete automated setup (recommended)"
+      - echo "  boundary:discover-targets  - Auto-discover infrastructure targets"
+      - echo "  boundary:inject-credentials - Auto-inject SSH credentials"
+      - echo "  boundary:deploy-complete   - Deploy with full automation"
       - echo ""
-      - echo "🔧 MANAGEMENT -"
-      - echo "  list-all-targets  - List all discovered targets"
-      - echo "  test-all-connections - Test SSH to all targets"
-      - echo "  update-discovery  - Refresh target discovery"
-      - echo "  status-full       - Complete deployment status"
+      - echo " MANAGEMENT -"
+      - echo "  boundary:list-all-targets  - List all discovered targets"
+      - echo "  boundary:test-all-connections - Test SSH to all targets"
+      - echo "  boundary:update-discovery  - Refresh target discovery"
+      - echo "  boundary:status-full       - Complete deployment status"
       - echo ""
-      - echo "🔗 CONNECTION HELPERS -"
-      - echo "  connect-dc1-server  - Quick connect to DC1 server"
-      - echo "  connect-dc2-server  - Quick connect to DC2 server"
-      - echo "  connect-dc1-client  - Quick connect to DC1 client"
-      - echo "  connect-dc2-client  - Quick connect to DC2 client"
+      - echo " CONNECTION HELPERS -"
+      - echo "  boundary:connect-dc1-server  - Quick connect to DC1 server"
+      - echo "  boundary:connect-dc2-server  - Quick connect to DC2 server"
+      - echo "  boundary:connect-dc1-client  - Quick connect to DC1 client"
+      - echo "  boundary:connect-dc2-client  - Quick connect to DC2 client"
       - echo ""
-      - echo "🗑️  CLEANUP -"
-      - echo "  cleanup-all       - Remove all Boundary resources"
+      - echo "  CLEANUP -"
+      - echo "  boundary:cleanup-all       - Remove all Boundary resources"
       - echo ""
-      - echo "📖 QUICK START -"
-      - echo "  task -t tasks/boundary-auto.yml setup-full"
+      - echo " QUICK START -"
+      - echo "  task -t tasks/boundary:auto.yml boundary:setup-full"
 
-  discover-targets:
+  boundary:discover-targets:
     desc: "Auto-discover all infrastructure targets"
     cmds:
-      - echo "🔍 Discovering infrastructure targets..."
+      - echo " Discovering infrastructure targets..."
       - echo ""
       - echo "=== DC1 Servers ==="
-      - cd {{.DC1_DIR}} && terraform output -json server_nodes 2>/dev/null || echo "❌ DC1 not deployed"
+      - cd {{.DC1_DIR}} && terraform output -json server_nodes 2>/dev/null || echo " DC1 not deployed"
       - echo ""
       - echo "=== DC1 Clients ==="
-      - cd {{.DC1_DIR}} && terraform output -json client_nodes 2>/dev/null || echo "❌ DC1 clients not available"
+      - cd {{.DC1_DIR}} && terraform output -json client_nodes 2>/dev/null || echo " DC1 clients not available"
       - echo ""
       - echo "=== DC2 Servers ==="
-      - cd {{.DC2_DIR}} && terraform output -json server_nodes 2>/dev/null || echo "❌ DC2 not deployed"
+      - cd {{.DC2_DIR}} && terraform output -json server_nodes 2>/dev/null || echo " DC2 not deployed"
       - echo ""
       - echo "=== DC2 Clients ==="
-      - cd {{.DC2_DIR}} && terraform output -json client_nodes 2>/dev/null || echo "❌ DC2 clients not available"
+      - cd {{.DC2_DIR}} && terraform output -json client_nodes 2>/dev/null || echo " DC2 clients not available"
       - echo ""
-      - echo "ℹ️  Target discovery completed. Use deploy-complete to create Boundary targets."
+      - echo "  Target discovery completed. Use deploy-complete to create Boundary targets."
 
-  inject-credentials:
+  boundary:inject-credentials:
     desc: "Auto-inject SSH credentials for all targets"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🔑 Auto-injecting SSH credentials..."
+      - echo " Auto-injecting SSH credentials..."
       - echo ""
       - echo "Credential injection will be handled by Terraform using workspace variables -"
       - echo "- ssh_public_key (from Terraform workspace)"
       - echo "- ssh_private_key (from Terraform workspace)"
       - echo "- ssh_username (default - ubuntu)"
       - echo ""
-      - echo "✅ Credentials configured for automatic injection"
+      - echo " Credentials configured for automatic injection"
 
-  deploy-complete:
+  boundary:deploy-complete:
     desc: "Deploy Boundary with full automation"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🚀 Deploying Boundary with full automation..."
+      - echo " Deploying Boundary with full automation..."
       - echo ""
       - echo "This will -"
       - echo "1. Auto-discover all infrastructure targets (servers + clients)"
@@ -96,122 +96,122 @@ tasks:
       - echo "Applying Boundary configuration..."
       - terraform apply -auto-approve
       - echo ""
-      - echo "✅ Boundary deployment completed with full automation"
-      - task: status-full
+      - echo " Boundary deployment completed with full automation"
+      - task: boundary:status-full
 
-  setup-full:
+  boundary:setup-full:
     desc: "Complete automated Boundary setup (recommended)"
     cmds:
-      - echo "🤖 Starting complete automated Boundary setup..."
+      - echo " Starting complete automated Boundary setup..."
       - echo ""
-      - task: discover-targets
-      - task: inject-credentials
-      - task: deploy-complete
+      - task: boundary:discover-targets
+      - task: boundary:inject-credentials
+      - task: boundary:deploy-complete
       - echo ""
-      - echo "🎉 Automated Boundary setup completed!"
+      - echo " Automated Boundary setup completed!"
       - echo ""
       - echo "Next steps -"
       - echo "1. Authenticate - boundary authenticate password -auth-method-id <auth-method>"
-      - echo "2. List targets - task -t tasks/boundary-auto.yml list-all-targets"
-      - echo "3. Test connections - task -t tasks/boundary-auto.yml test-all-connections"
+      - echo "2. List targets - task -t tasks/boundary:auto.yml boundary:list-all-targets"
+      - echo "3. Test connections - task -t tasks/boundary:auto.yml boundary:test-all-connections"
 
-  list-all-targets:
+  boundary:list-all-targets:
     desc: "List all discovered and configured targets"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🎯 All Boundary Targets -"
+      - echo " All Boundary Targets -"
       - echo ""
       - echo "=== DC1 Targets ==="
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc1")) | "\\(.key) - \\(.value.id) (\\(.value.type) port \\(.value.port))"' 2>/dev/null || echo "❌ No DC1 targets configured"
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc1")) | "\\(.key) - \\(.value.id) (\\(.value.type) port \\(.value.port))"' 2>/dev/null || echo " No DC1 targets configured"
       - echo ""
       - echo "=== DC2 Targets ==="
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc2")) | "\\(.key) - \\(.value.id) (\\(.value.type) port \\(.value.port))"' 2>/dev/null || echo "❌ No DC2 targets configured"
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc2")) | "\\(.key) - \\(.value.id) (\\(.value.type) port \\(.value.port))"' 2>/dev/null || echo " No DC2 targets configured"
       - echo ""
       - echo "=== Connection Commands ==="
-      - terraform output connection_commands 2>/dev/null || echo "❌ Connection commands not available"
+      - terraform output connection_commands 2>/dev/null || echo " Connection commands not available"
 
-  test-all-connections:
+  boundary:test-all-connections:
     desc: "Test SSH connections to all targets"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🧪 Testing all Boundary SSH connections..."
+      - echo " Testing all Boundary SSH connections..."
       - echo ""
       - echo "Available targets for testing -"
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | "Target - \\(.key)\\nID - \\(.value.id)\\nCommand - boundary connect ssh -target-id \\(.value.id)\\n"' || echo "❌ No targets available for testing"
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | "Target - \\(.key)\\nID - \\(.value.id)\\nCommand - boundary connect ssh -target-id \\(.value.id)\\n"' || echo " No targets available for testing"
       - echo ""
       - echo "To test a specific target -"
       - echo "boundary connect ssh -target-id <target-id-from-above>"
       - echo ""
       - echo "To test all targets automatically, run each command above."
 
-  connect-dc1-server:
+  boundary:connect-dc1-server:
     desc: "Quick connect to DC1 server via Boundary"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🔗 Connecting to DC1 server via Boundary..."
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc1") and contains("server")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo "❌ No DC1 server targets available"
+      - echo " Connecting to DC1 server via Boundary..."
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc1") and contains("server")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo " No DC1 server targets available"
 
-  connect-dc2-server:
+  boundary:connect-dc2-server:
     desc: "Quick connect to DC2 server via Boundary"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🔗 Connecting to DC2 server via Boundary..."
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc2") and contains("server")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo "❌ No DC2 server targets available"
+      - echo " Connecting to DC2 server via Boundary..."
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc2") and contains("server")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo " No DC2 server targets available"
 
-  connect-dc1-client:
+  boundary:connect-dc1-client:
     desc: "Quick connect to DC1 client via Boundary"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🔗 Connecting to DC1 client via Boundary..."
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc1") and contains("client")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo "❌ No DC1 client targets available"
+      - echo " Connecting to DC1 client via Boundary..."
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc1") and contains("client")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo " No DC1 client targets available"
 
-  connect-dc2-client:
+  boundary:connect-dc2-client:
     desc: "Quick connect to DC2 client via Boundary"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🔗 Connecting to DC2 client via Boundary..."
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc2") and contains("client")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo "❌ No DC2 client targets available"
+      - echo " Connecting to DC2 client via Boundary..."
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | select(.key | contains("dc2") and contains("client")) | "boundary connect ssh -target-id \\(.value.id)"' | head -1 || echo " No DC2 client targets available"
 
-  update-discovery:
+  boundary:update-discovery:
     desc: "Refresh target discovery and update Boundary"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🔄 Refreshing target discovery..."
-      - task: discover-targets
+      - echo " Refreshing target discovery..."
+      - task: boundary:discover-targets
       - echo ""
       - echo "Updating Boundary configuration..."
       - terraform apply -auto-approve
-      - echo "✅ Target discovery updated"
+      - echo " Target discovery updated"
 
-  status-full:
+  boundary:status-full:
     desc: "Complete deployment status with all details"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "📊 Complete Boundary Deployment Status -"
+      - echo " Complete Boundary Deployment Status -"
       - echo ""
       - echo "=== Boundary Cluster ==="
-      - terraform output boundary_cluster_url 2>/dev/null || echo "❌ Boundary cluster not configured"
+      - terraform output boundary_cluster_url 2>/dev/null || echo " Boundary cluster not configured"
       - echo ""
       - echo "=== Infrastructure Discovery ==="
-      - terraform output discovered_infrastructure 2>/dev/null || echo "❌ No infrastructure discovered"
+      - terraform output discovered_infrastructure 2>/dev/null || echo " No infrastructure discovered"
       - echo ""
       - echo "=== Host Catalogs ==="
-      - terraform output -json host_catalogs 2>/dev/null | jq -r 'to_entries[] | "\\(.key) - \\(.value)"' || echo "❌ No host catalogs configured"
+      - terraform output -json host_catalogs 2>/dev/null | jq -r 'to_entries[] | "\\(.key) - \\(.value)"' || echo " No host catalogs configured"
       - echo ""
       - echo "=== Credential Stores ==="
-      - terraform output -json credential_stores 2>/dev/null | jq -r 'to_entries[] | "\\(.key) - \\(.value)"' || echo "❌ No credential stores configured"
+      - terraform output -json credential_stores 2>/dev/null | jq -r 'to_entries[] | "\\(.key) - \\(.value)"' || echo " No credential stores configured"
       - echo ""
       - echo "=== Active Targets ==="
-      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | "\\(.key) - \\(.value.id) [\\(.value.type) port \\(.value.port)]"' || echo "❌ No targets configured"
+      - terraform output -json boundary_targets 2>/dev/null | jq -r 'to_entries[] | "\\(.key) - \\(.value.id) [\\(.value.type) port \\(.value.port)]"' || echo " No targets configured"
       - echo ""
       - echo "=== Quick Connection Commands ==="
-      - terraform output connection_commands 2>/dev/null || echo "❌ Connection commands not available"
+      - terraform output connection_commands 2>/dev/null || echo " Connection commands not available"
 
-  cleanup-all:
+  boundary:cleanup-all:
     desc: "Remove all Boundary resources"
     dir: "{{.BOUNDARY_DIR}}"
     cmds:
-      - echo "🗑️  Cleaning up all Boundary resources..."
+      - echo "  Cleaning up all Boundary resources..."
       - echo ""
       - echo "This will remove -"
       - echo "- All Boundary targets"
@@ -219,11 +219,11 @@ tasks:
       - echo "- All credential stores and credentials"
       - echo "- All Boundary configuration"
       - echo ""
-      - echo "⚠️  This action cannot be undone!"
+      - echo "  This action cannot be undone!"
       - echo "Continue? (Ctrl+C to cancel, Enter to proceed)"
       - read confirm
       - terraform destroy -auto-approve
-      - echo "✅ All Boundary resources removed"
+      - echo " All Boundary resources removed"
 
   default:
     desc: "Show help by default"

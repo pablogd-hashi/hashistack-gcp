@@ -1,0 +1,97 @@
+version: '3'
+
+includes:
+  admin-partitions:
+    taskfile: admin-partitions
+    dir: admin-partitions
+  peering:
+    taskfile: peering
+    dir: peering
+  cts:
+    taskfile: cts
+    dir: cts
+
+tasks:
+  help:
+    desc: "Show all Consul features and capabilities"
+    cmds:
+      - echo "=== CONSUL FEATURES ==="
+      - echo ""
+      - echo "Consul provides service discovery, configuration, and segmentation functionality"
+      - echo ""
+      - echo "CONSUL ADMIN PARTITIONS"
+      - echo "  consul:admin-partitions:help                    (Show admin partitions help)"
+      - echo "  consul:admin-partitions:deploy-policies         (Create ACL policies)"
+      - echo "  consul:admin-partitions:deploy-roles            (Create ACL roles)"
+      - echo "  consul:admin-partitions:deploy-partitions       (Create admin partitions)"
+      - echo "  consul:admin-partitions:deploy-tokens           (Create partition tokens)"
+      - echo "  consul:admin-partitions:get-certificates        (Get CA certificates)"
+      - echo "  consul:admin-partitions:deploy-secrets          (Setup K8s secrets)"
+      - echo "  consul:admin-partitions:deploy-gke              (Deploy to GKE)"
+      - echo "  consul:admin-partitions:deploy-all              (Complete setup)"
+      - echo ""
+      - echo "CONSUL CLUSTER PEERING"
+      - echo "  consul:peering:help                             (Show peering help)"
+      - echo "  consul:peering:env-setup                        (Set environment variables)"
+      - echo "  consul:peering:setup-peering                    (Configure mesh gateways)"
+      - echo "  consul:peering:establish-peering                (Create peering connection)"
+      - echo "  consul:peering:verify-peering                   (Verify peering status)"
+      - echo "  consul:peering:deploy-demo-apps                 (Deploy demo applications)"
+      - echo "  consul:peering:configure-sameness-groups        (Configure failover)"
+      - echo "  consul:peering:deploy-all                       (Complete peering setup)"
+      - echo "  consul:peering:cleanup-peering                  (Remove peering)"
+      - echo ""
+      - echo "CONSUL TERRAFORM SYNC (CTS)"
+      - echo "  consul:cts:help                                 (Show CTS help)"
+      - echo "  consul:cts:configure                            (Configure CTS connection)"
+      - echo "  consul:cts:deploy                               (Deploy CTS daemon)"
+      - echo "  consul:cts:status                               (Show CTS status)"
+      - echo "  consul:cts:validate                             (Validate configuration)"
+      - echo "  consul:cts:list-tasks                           (List CTS tasks)"
+      - echo "  consul:cts:show-modules                         (Show available modules)"
+      - echo "  consul:cts:sync-status                          (Show sync status)"
+      - echo "  consul:cts:logs                                 (Show CTS logs)"
+      - echo "  consul:cts:cleanup                              (Remove CTS)"
+      - echo ""
+      - echo "QUICK START CONSUL ADMIN PARTITIONS"
+      - echo "  1. task consul:admin-partitions:deploy-all      (Complete setup)"
+      - echo "  2. task consul:admin-partitions:get-certificates (Get certificates)"
+      - echo "  3. task consul:admin-partitions:deploy-secrets  (Setup K8s secrets)"
+      - echo "  4. task consul:admin-partitions:deploy-gke      (Deploy to GKE)"
+      - echo ""
+      - echo "QUICK START CONSUL CLUSTER PEERING"
+      - echo "  1. task consul:peering:env-setup                (Set environment)"
+      - echo "  2. task consul:peering:deploy-all               (Complete setup)"
+      - echo "  3. task consul:peering:verify-peering           (Verify connection)"
+
+  # Shortcut tasks for common operations
+  admin-partitions:help:
+    desc: "Show Consul admin partitions help"
+    cmds:
+      - task: admin-partitions:help
+
+  peering:help:
+    desc: "Show Consul cluster peering help"
+    cmds:
+      - task: peering:help
+
+  cts:help:
+    desc: "Show Consul Terraform Sync help"
+    cmds:
+      - task: cts:help
+
+  # Quick access to most common tasks
+  admin-partitions:deploy-all:
+    desc: "Complete Consul admin partitions setup"
+    cmds:
+      - task: admin-partitions:deploy-all
+
+  peering:deploy-all:
+    desc: "Complete Consul cluster peering setup"
+    cmds:
+      - task: peering:deploy-all
+
+  default:
+    desc: "Show help by default"
+    cmds:
+      - task: help
