@@ -43,7 +43,8 @@ This repository creates a complete HashiCorp enterprise ecosystem on GCP includi
 - Google Cloud SDK (gcloud) authenticated
 - Packer >= 1.8.0 (for custom image builds)
 - kubectl (for GKE components)
-- Task ([(https://taskfile.dev/)]) - 
+- Task ([(https://taskfile.dev/)]) 
+   
 **Required Permissions:**
 - GCP Project Owner or Editor role
 - Ability to create compute instances, networks, and load balancers
