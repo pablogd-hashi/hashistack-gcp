@@ -9,7 +9,8 @@ This repository automates the deployment of a production-like HashiCorp stack on
 - Monitoring and observability (Prometheus, Grafana, Traefik)
 - Multi-datacenter capabilities with cluster peering
 - Admin partitions for multi-tenancy
-- Infrastructure automation with HashiCorp Boundary
+- Secure access to infrastructure with HashiCorp Boundary
+- Infrastructure automation with Consul-Terraform-Sync (CTS)
 
 **⚠️ For demo and PoC purposes only - not for production use**
 
@@ -18,9 +19,11 @@ This repository automates the deployment of a production-like HashiCorp stack on
 ![HLD](./docs/images/architecture-diagram.png)
 
 **Components:**
-- **Packer**: Builds custom VM images with HashiCorp tools pre-installed
-- **Terraform**: Deploys infrastructure (networking, compute, load balancers)
+- **Packer**: Image bakery - builds custom VM images with HashiCorp tools pre-installed
+- **Terraform**: Infrastructure automation - deploys networking, compute, and load balancers
 - **Taskfile**: Orchestrates the entire deployment workflow
+- **Boundary**: Secure access to all servers and clients
+- **Consul-Terraform-Sync (CTS)**: Automates infrastructure changes based on Consul service changes
 - **Consul Enterprise**: Service discovery, configuration, and service mesh
 - **Nomad Enterprise**: Workload orchestration and scheduling
 
