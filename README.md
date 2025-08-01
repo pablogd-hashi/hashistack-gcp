@@ -37,7 +37,6 @@ This repository creates a complete HashiCorp enterprise ecosystem on GCP includi
 
 ## Prerequisites
 
-Before deploying this stack, ensure you have:
 
 **Required Tools:**
 - Terraform >= 1.0.0
