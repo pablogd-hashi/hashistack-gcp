@@ -161,12 +161,13 @@ task eval-both
 **Note**: SSH access requires the `ssh_public_key` and `ssh_private_key` variables to be configured in your Terraform Cloud workspace. Without these, you cannot SSH directly to instances or use Boundary SSH connections.
 
 #### 4.2 Configure Nomad-Consul Integration
+Once you've exported your variables ( eval_vars) in your terminal, run:
 
-# Configure Nomad workload identity with Consul
+```
 nomad setup consul -y
 ```
 
-#### 4.3 Authenticate to Nomad UI
+#### 4.2 Authenticate to Nomad UI
 
 **For UI access, authenticate with Nomad:**
 ```bash
@@ -176,7 +177,6 @@ nomad ui -authenticate
 
 These steps are **required** before setting up cluster peering or deploying applications that use service mesh features.
 
-## Functionality Breakdown
 
 ### Multi-Cluster Peering
 
