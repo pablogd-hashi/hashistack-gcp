@@ -34,35 +34,6 @@ This repository creates a complete HashiCorp enterprise ecosystem on GCP includi
 
 ![HLD](./docs/images/architecture-diagram.png)
 
-## 🎉 Current Status (Deployment Ready)
-
-This repository includes **working clusters** with all issues resolved:
-
-**✅ Infrastructure Status:**
-- **DC1 (europe-north1):** 3 Consul servers + 2 clients running
-- **DC2 (europe-central2):** 3 Consul servers + 2 clients running  
-- **Both clusters:** Consul Enterprise v1.21.2+ent healthy and connected
-- **Templates:** Fixed Consul configuration issues for future deployments
-
-**🚀 Available Features:**
-- **Core Infrastructure:** `task deploy-both-dc` (working)
-- **Environment Setup:** `task eval-both` (required)
-- **Cluster Peering:** `task -t tasks/peering.yml help`
-- **Admin Partitions:** `task -t tasks/admin-partitions.yml help`
-- **Automated Boundary:** `task -t tasks/boundary-auto.yml help` (new!)
-- **CTS Integration:** `task -t tasks/cts.yml help`
-
-**📖 Quick Commands:**
-```bash
-# Get environment variables (copy/paste to shell)
-task eval-both
-
-# Configure Nomad-Consul integration (required)
-task setup-consul-nomad-both
-
-# Access cluster UIs
-task show-all-urls
-```
 
 ## Prerequisites
 
@@ -73,16 +44,15 @@ Before deploying this stack, ensure you have:
 - Google Cloud SDK (gcloud) authenticated
 - Packer >= 1.8.0 (for custom image builds)
 - kubectl (for GKE components)
-- Task (taskfile) - optional but recommended
-
+- Task ([(https://taskfile.dev/)]) - 
 **Required Permissions:**
 - GCP Project Owner or Editor role
 - Ability to create compute instances, networks, and load balancers
 - DNS zone management (if using custom domains)
 
 **Required Licenses:**
-- Consul Enterprise license
-- Nomad Enterprise license
+- Consul Enterprise license ( only if using admin-partitions or CTS)
+- Nomad Enterprise license ( optional if not using namespaces but recommended)
 
 **GCP Setup:**
 - GCP project with billing enabled
@@ -104,6 +74,13 @@ consul_version = "1.21.0+ent"
 nomad_version = "1.10.3+ent"
 consul_bootstrap_token = "ConsulR0cks" # Change in production
 enable_acls = true
+```
+**only if using boundary**
+```
+boundary_addr="https://YOUR-BOUNDARY-CLUSTER.boundary.hashicorp.cloud"
+boundary_auth_method_id="your-auth-method-id"
+boundary_admin_login_name="admin"
+boundary_admin_password="your-boundary-password"
 ```
 
 **GCP Common Variables:**
@@ -185,11 +162,6 @@ task eval-both
 
 #### 4.2 Configure Nomad-Consul Integration
 
-**Execute on both DC1 and DC2 servers AFTER setting environment variables:**
-```bash
-# SSH to each cluster's server nodes
-task ssh-dc1-server  # or task ssh-dc2-server
-
 # Configure Nomad workload identity with Consul
 nomad setup consul -y
 ```
@@ -204,25 +176,6 @@ nomad ui -authenticate
 
 These steps are **required** before setting up cluster peering or deploying applications that use service mesh features.
 
-### 5. Current Deployment Status
-
-After completing the infrastructure deployment and post-configuration steps:
-
-**✅ DC1 Cluster (europe-north1):**
-- 3 Consul servers + 2 clients running
-- Consul Enterprise v1.21.2+ent healthy
-- Full cluster connectivity established
-
-**✅ DC2 Cluster (europe-central2):**  
-- 3 Consul servers + 2 clients running
-- Consul Enterprise v1.21.2+ent healthy
-- Full cluster connectivity established
-
-**🔧 Fixed Issues:**
-- Resolved Consul startup failures caused by invalid `limits.grpc_max_requests_per_stream` configuration
-- Updated Terraform templates to prevent future occurrences
-- Both clusters now fully operational
-
 ## Functionality Breakdown
 
 ### Multi-Cluster Peering
@@ -232,10 +185,7 @@ For federating multiple Consul datacenters with cluster peering:
 **Documentation:** [`consul/peering/README.md`](consul/peering/README.md)
 
 **Quick Start:**
-```bash
-# Deploy both clusters first
-task deploy-both
-
+```
 # Setup peering
 task peering:setup
 task peering:establish
@@ -282,29 +232,7 @@ For secure remote access to infrastructure with HashiCorp Boundary:
    - `ssh_public_key` - Your SSH public key content (required for all clusters)
    - `ssh_private_key` - Your SSH private key content (sensitive, required for Boundary)
    - `ssh_username` - SSH username (defaults to "debian")
-3. **Boundary variables** configured in Terraform Cloud or tfvars:
-   ```bash
-   # HCP Boundary Configuration
-   hcp_boundary_cluster_id = "your-boundary-cluster-id"
-   boundary_addr = "https://your-cluster.boundary.hashicorp.cloud"
-   boundary_auth_method_id = "your-auth-method-id" 
-   boundary_admin_login_name = "admin"
-   boundary_admin_password = "your-boundary-password" # Use as sensitive variable
-   
-   # HCP Credentials (reuse from existing variable set)
-   hcp_client_id = "your-hcp-client-id"
-   hcp_client_secret = "your-hcp-client-secret" # Sensitive
-   
-   # Remote State Configuration (for workspace integration)
-   dc1_remote_state_config = {
-     organization = "your-hcp-terraform-org"
-     workspaces = { name = "your-dc1-workspace-name" }
-   }
-   dc2_remote_state_config = {
-     organization = "your-hcp-terraform-org"
-     workspaces = { name = "your-dc2-workspace-name" }
-   }
-   ```
+
 
 #### Automated Deployment:
 ```bash
@@ -335,22 +263,7 @@ boundary connect ssh -target-id <target-id>
 - **Target management** with host catalogs and credential stores
 - **Quick connection helpers** for common access patterns
 
-## Directory Structure
 
-```
-├── clusters/                    # Infrastructure deployments
-│   ├── dc1/terraform/          # Primary cluster (europe-north1)
-│   ├── dc2/terraform/          # Secondary cluster (europe-central2)
-│   └── gke-*/                  # GKE clusters for admin partitions
-├── consul/                     # Consul-specific configurations
-│   ├── admin-partitions/       # Admin partitions setup
-│   ├── peering/               # Cluster peering configuration
-│   └── cts/                   # Consul-Terraform-Sync
-├── boundary/                   # Boundary integration (optional)
-├── packer/                     # Custom image builds
-├── nomad-apps/                # Nomad job definitions
-└── scripts/                   # Automation and helper scripts
-```
 
 ## Common Commands
 
@@ -402,62 +315,3 @@ After deployment, services are accessible at:
 - Terramino Game: `http://terramino.your-domain.com`
 - Demo Services: Various ports on client load balancer
 
-## Security Considerations
-
-**Enterprise Features:**
-- ACLs enabled by default for Consul and Nomad
-- TLS encryption for all inter-service communication
-- Enterprise licenses required for advanced features
-
-**Network Security:**
-- Firewall rules restrict access to necessary ports only
-- Internal communication uses private networks
-- Service mesh provides zero-trust networking
-
-**Secrets Management:**
-- Sensitive variables marked as sensitive in Terraform
-- Nomad secure variables for application secrets
-- Consul ACL tokens for service authentication
-
-## Troubleshooting
-
-**Common Issues:**
-
-1. **License Errors**: Ensure valid enterprise licenses are configured
-2. **Image Not Found**: Run `task build-images` before deployment
-3. **DNS Issues**: Verify DNS zone configuration and permissions
-4. **Connectivity**: Check firewall rules and network configuration
-5. **SSH Access Denied**: Ensure `ssh_public_key` variable is configured in Terraform Cloud
-6. **Boundary Connection Closed**: Verify both `ssh_public_key` and `ssh_private_key` are configured
-
-**Useful Commands:**
-```bash
-# Check service status on nodes
-sudo systemctl status consul
-sudo systemctl status nomad
-
-# View service logs
-sudo journalctl -u consul -f
-sudo journalctl -u nomad -f
-
-# Check cluster membership
-consul members
-nomad server members
-nomad node status
-```
-
-**Getting Help:**
-- Check individual README files in each directory for specific functionality
-- Review Terraform outputs for connection information
-- Use `task status` for overall cluster health
-- Examine logs on individual instances for detailed debugging
-
-## Contributing
-
-This repository follows infrastructure-as-code best practices:
-- All changes should be made through Terraform
-- Test changes in development environments first
-- Follow HashiCorp configuration conventions
-- Document new features and configurations
-
-For specific functionality (peering, admin partitions, CTS, boundary), refer to the respective README files in each directory.
