@@ -297,6 +297,12 @@ curl http://<dc1-client-ip>:9090/health
 - Verify firewall rules allow traffic on port 8443
 - Ensure mesh gateways are running on both clusters
 
+**Peering Connection Fails with Internal IP Error:**
+- Error: `dial tcp 10.x.x.x:8502: i/o timeout` means Consul is using internal IPs
+- **Root cause**: Consul servers not advertising WAN addresses properly
+- **Solution**: Redeploy clusters with updated Consul configuration
+- **Fix applied**: Added `advertise_addr_wan = "$PUBLIC_IP"` to server templates
+
 **Services Not Discoverable:**
 - Verify exported-services configuration on DC2
 - Check that services are properly registered in Consul

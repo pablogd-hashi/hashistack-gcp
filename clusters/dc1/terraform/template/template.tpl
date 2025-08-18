@@ -123,7 +123,8 @@ bootstrap_expect = 3
 
 ui = true
 client_addr = "0.0.0.0"
-bind_addr = "$PRIVATE_IP"
+bind_addr = "{{ GetDefaultInterfaces | attr \"address\" }}"
+advertise_addr_wan = "$PUBLIC_IP"
 
 connect {
   enabled = true

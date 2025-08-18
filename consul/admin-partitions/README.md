@@ -200,19 +200,62 @@ consul partition list
 
 #### Phase 3: Generate Partition Tokens
 ```bash
-# Create admin roles
+# Create admin roles for all partitions
 consul acl role create \
   -name "k8s-west1-admin" \
   -description "Admin role for k8s-west1 partition" \
   -policy-name "k8s-west1-admin-policy"
 
-# Create partition tokens
+consul acl role create \
+  -name "k8s-southwest1-admin" \
+  -description "Admin role for k8s-southwest1 partition" \
+  -policy-name "k8s-southwest1-admin-policy"
+
+# Create admin partition tokens
 consul acl token create \
   -description "Admin token for k8s-west1 partition" \
   -role-name "k8s-west1-admin" | tee consul/admin-partitions/tokens/k8s-west1-admin-token.txt
 
-# Extract token IDs
+consul acl token create \
+  -description "Admin token for k8s-southwest1 partition" \
+  -role-name "k8s-southwest1-admin" | tee consul/admin-partitions/tokens/k8s-southwest1-admin-token.txt
+
+# Extract token IDs for all partitions
 cat consul/admin-partitions/tokens/k8s-west1-admin-token.txt | grep SecretID | awk '{print $2}' > consul/admin-partitions/tokens/k8s-west1-admin.token
+
+cat consul/admin-partitions/tokens/k8s-southwest1-admin-token.txt | grep SecretID | awk '{print $2}' > consul/admin-partitions/tokens/k8s-southwest1-admin.token
+
+# Create environment-specific roles and tokens for k8s-west1
+consul acl role create \
+  -name "k8s-west1-development" \
+  -description "Development environment role for k8s-west1" \
+  -policy-name "k8s-west1-development-policy"
+
+consul acl role create \
+  -name "k8s-west1-testing" \
+  -description "Testing environment role for k8s-west1" \
+  -policy-name "k8s-west1-testing-policy"
+
+consul acl role create \
+  -name "k8s-west1-acceptance" \
+  -description "Acceptance environment role for k8s-west1" \
+  -policy-name "k8s-west1-acceptance-policy"
+
+# Create environment-specific roles and tokens for k8s-southwest1
+consul acl role create \
+  -name "k8s-southwest1-development" \
+  -description "Development environment role for k8s-southwest1" \
+  -policy-name "k8s-southwest1-development-policy"
+
+consul acl role create \
+  -name "k8s-southwest1-testing" \
+  -description "Testing environment role for k8s-southwest1" \
+  -policy-name "k8s-southwest1-testing-policy"
+
+consul acl role create \
+  -name "k8s-southwest1-production" \
+  -description "Production environment role for k8s-southwest1" \
+  -policy-name "k8s-southwest1-production-policy"
 ```
 
 #### Phase 4: Deploy to GKE

@@ -81,6 +81,35 @@ tasks:
       - task: deploy-both-gke
       - echo "🎉 All clusters deployed successfully"
 
+  # === Infrastructure Updates ===
+
+  redeploy-dc1:
+    desc: "Redeploy DC1 cluster with updated configuration"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "🔄 Redeploying DC1 cluster with updated configuration..."
+      - terraform apply -auto-approve
+      - echo "✅ DC1 cluster redeployed successfully"
+      - task: show-dc1-info
+
+  redeploy-dc2:
+    desc: "Redeploy DC2 cluster with updated configuration"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "🔄 Redeploying DC2 cluster with updated configuration..."
+      - terraform apply -auto-approve
+      - echo "✅ DC2 cluster redeployed successfully"
+      - task: show-dc2-info
+
+  redeploy-both-dc:
+    desc: "Redeploy both DC clusters with updated configuration"
+    cmds:
+      - echo "🔄 Redeploying both DC clusters with updated configuration..."
+      - task: redeploy-dc1
+      - task: redeploy-dc2
+      - echo "🎉 Both DC clusters redeployed successfully"
+      - task: show-all-urls
+
   # === Post-Deployment Configuration ===
 
   eval-dc1:
@@ -193,6 +222,71 @@ tasks:
       - task: deploy-monitoring-dc1
       - task: deploy-monitoring-dc2
       - echo "🎉 Monitoring stack deployed on both DC1 and DC2"
+
+  # === Monitoring Service URLs ===
+
+  monitoring-urls-dc1:
+    desc: "Get monitoring service URLs for DC1 (Grafana, Prometheus, Traefik)"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "📊 === DC1 MONITORING SERVICES ==="
+      - terraform output monitoring_urls 2>/dev/null || echo "❌ DC1 not deployed or monitoring not configured"
+
+  monitoring-urls-dc2:
+    desc: "Get monitoring service URLs for DC2 (Grafana, Prometheus, Traefik)"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "📊 === DC2 MONITORING SERVICES ==="
+      - terraform output monitoring_urls 2>/dev/null || echo "❌ DC2 not deployed or monitoring not configured"
+
+  monitoring-urls-both:
+    desc: "Get monitoring URLs for both DC1 and DC2"
+    cmds:
+      - task: monitoring-urls-dc1
+      - echo ""
+      - task: monitoring-urls-dc2
+
+  grafana-dc1:
+    desc: "Get Grafana URL for DC1"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "🔗 Grafana DC1:"
+      - terraform output -json monitoring_urls 2>/dev/null | jq -r '.grafana.dashboard // "❌ DC1 not deployed"'
+
+  grafana-dc2:
+    desc: "Get Grafana URL for DC2"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "🔗 Grafana DC2:"
+      - terraform output -json monitoring_urls 2>/dev/null | jq -r '.grafana.dashboard // "❌ DC2 not deployed"'
+
+  prometheus-dc1:
+    desc: "Get Prometheus URL for DC1"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "🔗 Prometheus DC1:"
+      - terraform output -json monitoring_urls 2>/dev/null | jq -r '.prometheus.ui // "❌ DC1 not deployed"'
+
+  prometheus-dc2:
+    desc: "Get Prometheus URL for DC2"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "🔗 Prometheus DC2:"
+      - terraform output -json monitoring_urls 2>/dev/null | jq -r '.prometheus.ui // "❌ DC2 not deployed"'
+
+  traefik-dc1:
+    desc: "Get Traefik dashboard URL for DC1"
+    dir: "{{.DC1_DIR}}"
+    cmds:
+      - echo "🔗 Traefik DC1:"
+      - terraform output -json monitoring_urls 2>/dev/null | jq -r '.traefik.dashboard // "❌ DC1 not deployed"'
+
+  traefik-dc2:
+    desc: "Get Traefik dashboard URL for DC2"
+    dir: "{{.DC2_DIR}}"
+    cmds:
+      - echo "🔗 Traefik DC2:"
+      - terraform output -json monitoring_urls 2>/dev/null | jq -r '.traefik.dashboard // "❌ DC2 not deployed"'
 
   # === Information and Status ===
 
@@ -337,6 +431,11 @@ tasks:
       - echo "  deploy-both-gke       - Deploy both GKE clusters"
       - echo "  deploy-all            - Deploy all clusters"
       - echo ""
+      - echo "🔄 INFRASTRUCTURE UPDATES -"
+      - echo "  redeploy-dc1          - Redeploy DC1 with updated configuration"
+      - echo "  redeploy-dc2          - Redeploy DC2 with updated configuration"
+      - echo "  redeploy-both-dc      - Redeploy both DC clusters"
+      - echo ""
       - echo "🔧 POST-DEPLOYMENT -"
       - echo "  eval-dc1                - Get DC1 environment variables"
       - echo "  eval-dc2                - Get DC2 environment variables"
@@ -356,6 +455,17 @@ tasks:
       - echo "  show-all-urls         - Show all cluster URLs and access info"
       - echo "  get-all-ips          - Get all server and client IPs"
       - echo "  status               - Show complete cluster status"
+      - echo ""
+      - echo "📈 MONITORING URLS -"
+      - echo "  monitoring-urls-dc1   - Get all monitoring URLs for DC1"
+      - echo "  monitoring-urls-dc2   - Get all monitoring URLs for DC2"
+      - echo "  monitoring-urls-both  - Get monitoring URLs for both DCs"
+      - echo "  grafana-dc1          - Get Grafana URL for DC1"
+      - echo "  grafana-dc2          - Get Grafana URL for DC2"
+      - echo "  prometheus-dc1       - Get Prometheus URL for DC1"
+      - echo "  prometheus-dc2       - Get Prometheus URL for DC2"
+      - echo "  traefik-dc1          - Get Traefik dashboard URL for DC1"
+      - echo "  traefik-dc2          - Get Traefik dashboard URL for DC2"
       - echo ""
       - echo "🔌 SSH ACCESS -"
       - echo "  ssh-dc1-server       - SSH to DC1 server"

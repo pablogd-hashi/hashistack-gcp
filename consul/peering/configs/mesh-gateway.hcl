@@ -37,7 +37,7 @@ job "mesh-gateway" {
         # wan_ipv4 = "${attr.unique.platform.gce.network.dcanadillas-network.external-ip.0}"
         # wan = "${attr.unique.platform.gce.network.dcanadillas-network.external-ip.0}"
         wan_ipv4 = "${local.wan_attribute}"
-        # wan = "${local.wan_attribute}"
+        wan = "${local.wan_attribute}"
       }
 
       connect {
