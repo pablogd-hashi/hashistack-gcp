@@ -134,13 +134,53 @@ consul acl policy create \
   -description "Admin policy for k8s-southwest1 partition" \
   -rules @consul/admin-partitions/policies/k8s-southwest1-admin-policy.hcl
 
-# Create environment-specific policies
+# Create k8s-west1 environment-specific policies
 consul acl policy create \
   -name "k8s-west1-development-policy" \
   -description "Development environment policy for k8s-west1" \
   -rules @consul/admin-partitions/policies/k8s-west1-development-policy.hcl
 
-# Continue for all environments...
+consul acl policy create \
+  -name "k8s-west1-testing-policy" \
+  -description "Testing environment policy for k8s-west1" \
+  -rules @consul/admin-partitions/policies/k8s-west1-testing-policy.hcl
+
+consul acl policy create \
+  -name "k8s-west1-acceptance-policy" \
+  -description "Acceptance environment policy for k8s-west1" \
+  -rules @consul/admin-partitions/policies/k8s-west1-acceptance-policy.hcl
+
+# Create k8s-southwest1 environment-specific policies
+consul acl policy create \
+  -name "k8s-southwest1-development-policy" \
+  -description "Development environment policy for k8s-southwest1" \
+  -rules @consul/admin-partitions/policies/k8s-southwest1-development-policy.hcl
+
+consul acl policy create \
+  -name "k8s-southwest1-testing-policy" \
+  -description "Testing environment policy for k8s-southwest1" \
+  -rules @consul/admin-partitions/policies/k8s-southwest1-testing-policy.hcl
+
+consul acl policy create \
+  -name "k8s-southwest1-production-policy" \
+  -description "Production environment policy for k8s-southwest1" \
+  -rules @consul/admin-partitions/policies/k8s-southwest1-production-policy.hcl
+
+# Create application team policies
+consul acl policy create \
+  -name "frontend-developer-acl-policy" \
+  -description "Frontend developer access policy" \
+  -rules @consul/admin-partitions/policies/frontend-developer-acl-policy.hcl
+
+consul acl policy create \
+  -name "backend-developer-acl-policy" \
+  -description "Backend developer access policy" \
+  -rules @consul/admin-partitions/policies/backend-developer-acl-policy.hcl
+
+consul acl policy create \
+  -name "finance-acl-policy" \
+  -description "Finance team access policy" \
+  -rules @consul/admin-partitions/policies/finance-acl-policy.hcl
 ```
 
 #### Phase 2: Create Admin Partitions
