@@ -43,7 +43,7 @@ tasks:
       - echo "  boundary:cleanup-all       - Remove all Boundary resources"
       - echo ""
       - echo " QUICK START -"
-      - echo "  task -t tasks/boundary:auto.yml boundary:setup-full"
+      - echo "  task -t tasks/boundary-auto.yml boundary:setup-full"
 
   boundary:discover-targets:
     desc: "Auto-discover all infrastructure targets"
@@ -112,8 +112,8 @@ tasks:
       - echo ""
       - echo "Next steps -"
       - echo "1. Authenticate - boundary authenticate password -auth-method-id <auth-method>"
-      - echo "2. List targets - task -t tasks/boundary:auto.yml boundary:list-all-targets"
-      - echo "3. Test connections - task -t tasks/boundary:auto.yml boundary:test-all-connections"
+      - echo "2. List targets - task -t tasks/boundary-auto.yml boundary:list-all-targets"
+      - echo "3. Test connections - task -t tasks/boundary-auto.yml boundary:test-all-connections"
 
   boundary:list-all-targets:
     desc: "List all discovered and configured targets"

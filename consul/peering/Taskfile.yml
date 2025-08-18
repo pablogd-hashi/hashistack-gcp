@@ -1,9 +1,9 @@
 version: '3'
 
 vars:
-  DC1_DIR: ../clusters/dc1/terraform
-  DC2_DIR: ../clusters/dc2/terraform
-  PEERING_DIR: ../consul/peering
+  DC1_DIR: ../../clusters/dc1/terraform
+  DC2_DIR: ../../clusters/dc2/terraform
+  PEERING_DIR: .
 
 tasks:
   help:

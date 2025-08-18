@@ -3,6 +3,7 @@ variable "gcp_project" {
 }
 variable "sshuser" {
   description = "Username for SSH"
+  default     = "packer"
 }
 variable "gcp_zone" {
   description = "GCP Zone"

@@ -65,31 +65,31 @@ tasks:
       - echo "  3. task consul:peering:verify-peering           (Verify connection)"
 
   # Shortcut tasks for common operations
-  admin-partitions:help:
+  admin-partitions-help:
     desc: "Show Consul admin partitions help"
     cmds:
       - task: admin-partitions:help
 
-  peering:help:
+  peering-help:
     desc: "Show Consul cluster peering help"
     cmds:
       - task: peering:help
 
-  cts:help:
+  cts-help:
     desc: "Show Consul Terraform Sync help"
     cmds:
       - task: cts:help
 
   # Quick access to most common tasks
-  admin-partitions:deploy-all:
+  admin-partitions-deploy:
     desc: "Complete Consul admin partitions setup"
     cmds:
-      - task: admin-partitions:deploy-all
+      - task: admin-partitions:consul:deploy-all
 
-  peering:deploy-all:
+  peering-deploy:
     desc: "Complete Consul cluster peering setup"
     cmds:
-      - task: peering:deploy-all
+      - task: peering:consul:deploy-all
 
   default:
     desc: "Show help by default"

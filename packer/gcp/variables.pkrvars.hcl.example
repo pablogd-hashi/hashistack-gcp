@@ -1,0 +1,25 @@
+# Packer Variables for HashiStack Image Build
+# Copy this file to variables.pkrvars.hcl and update with your values
+
+# REQUIRED: Your GCP project ID (get this from HCP Terraform workspace or GCP Console)
+gcp_project = "your-gcp-project-id"
+
+# REQUIRED: SSH user for Packer build process (keep as "packer")
+sshuser = "packer"
+
+# Optional: Override default zone if needed (builds faster in same region as deployment)
+# gcp_zone = "europe-southwest1-a"  # For DC1 deployments
+# gcp_zone = "europe-west1-b"       # For DC2 deployments
+
+# Optional: Override HashiCorp versions (match your HCP Terraform variables)
+# consul_version = "1.21.2+ent"  
+# nomad_version = "1.10.3+ent"
+# vault_version = "1.14.1"
+
+# Optional: Override image naming
+# image = "consul-nomad"
+# image_family = "hashistack"
+# source_image_family = "debian-12"
+
+# Optional: HCP Packer registry configuration (uncomment if using HCP Packer)
+# hcp_bucket_name = "consul-nomad"

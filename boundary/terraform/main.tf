@@ -61,7 +61,11 @@ data "terraform_remote_state" "dc2" {
 data "external" "dc1_server_ips" {
   count = var.dc1_deployed ? 1 : 0
   program = ["bash", "-c", <<-EOT
-    ips=$(gcloud compute instances list --filter='name~hashi-server' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//')
+    set -e
+    ips=$(gcloud compute instances list --filter='name~hashi-server' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    if [ -z "$ips" ]; then
+      ips=$(gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    fi
     echo "{\"servers\": \"$ips\"}"
   EOT
   ]
@@ -70,7 +74,11 @@ data "external" "dc1_server_ips" {
 data "external" "dc1_client_ips" {
   count = var.dc1_deployed ? 1 : 0
   program = ["bash", "-c", <<-EOT
-    ips=$(gcloud compute instances list --filter='name~hashi-clients' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//')
+    set -e
+    ips=$(gcloud compute instances list --filter='name~hashi-clients' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    if [ -z "$ips" ]; then
+      ips=$(gcloud compute instances list --filter='name~hashi-clients' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    fi
     echo "{\"clients\": \"$ips\"}"
   EOT
   ]
@@ -79,7 +87,11 @@ data "external" "dc1_client_ips" {
 data "external" "dc2_server_ips" {
   count = var.dc2_deployed ? 1 : 0
   program = ["bash", "-c", <<-EOT
-    ips=$(gcloud compute instances list --filter='name~hashi-server' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//')
+    set -e
+    ips=$(gcloud compute instances list --filter='name~hashi-server' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    if [ -z "$ips" ]; then
+      ips=$(gcloud compute instances list --filter='name~hashi-server' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    fi
     echo "{\"servers\": \"$ips\"}"
   EOT
   ]
@@ -88,7 +100,11 @@ data "external" "dc2_server_ips" {
 data "external" "dc2_client_ips" {
   count = var.dc2_deployed ? 1 : 0
   program = ["bash", "-c", <<-EOT
-    ips=$(gcloud compute instances list --filter='name~hashi-clients' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//')
+    set -e
+    ips=$(gcloud compute instances list --filter='name~hashi-clients' --project='${var.gcp_project}' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    if [ -z "$ips" ]; then
+      ips=$(gcloud compute instances list --filter='name~hashi-clients' --format='value(EXTERNAL_IP)' | tr '\n' ',' | sed 's/,$//' || echo "")
+    fi
     echo "{\"clients\": \"$ips\"}"
   EOT
   ]
@@ -98,22 +114,26 @@ data "external" "dc2_client_ips" {
 locals {
   dc1_server_ips = var.dc1_deployed ? (
     length(var.dc1_server_ips) > 0 ? var.dc1_server_ips : 
-    split(",", data.external.dc1_server_ips[0].result.servers)
+    length(data.external.dc1_server_ips[0].result.servers) > 0 ? 
+      [for ip in split(",", data.external.dc1_server_ips[0].result.servers) : ip if ip != "" && length(ip) >= 3] : []
   ) : []
   
   dc1_client_ips = var.dc1_deployed ? (
     length(var.dc1_client_ips) > 0 ? var.dc1_client_ips : 
-    split(",", data.external.dc1_client_ips[0].result.clients)
+    length(data.external.dc1_client_ips[0].result.clients) > 0 ? 
+      [for ip in split(",", data.external.dc1_client_ips[0].result.clients) : ip if ip != "" && length(ip) >= 3] : []
   ) : []
   
   dc2_server_ips = var.dc2_deployed ? (
     length(var.dc2_server_ips) > 0 ? var.dc2_server_ips : 
-    split(",", data.external.dc2_server_ips[0].result.servers)
+    length(data.external.dc2_server_ips[0].result.servers) > 0 ? 
+      [for ip in split(",", data.external.dc2_server_ips[0].result.servers) : ip if ip != "" && length(ip) >= 3] : []
   ) : []
   
   dc2_client_ips = var.dc2_deployed ? (
     length(var.dc2_client_ips) > 0 ? var.dc2_client_ips : 
-    split(",", data.external.dc2_client_ips[0].result.clients)
+    length(data.external.dc2_client_ips[0].result.clients) > 0 ? 
+      [for ip in split(",", data.external.dc2_client_ips[0].result.clients) : ip if ip != "" && length(ip) >= 3] : []
   ) : []
 }
 
@@ -221,19 +241,37 @@ resource "boundary_auth_method" "password" {
 }
 
 # Create credential store for SSH keys in DC1 development project
-resource "boundary_credential_store_static" "ssh_keys" {
+resource "boundary_credential_store_static" "dc1_ssh_keys" {
   count       = var.dc1_deployed ? 1 : 0
-  name        = "ssh_credential_store"
-  description = "Static credential store for SSH keys"
+  name        = "dc1_ssh_credential_store"
+  description = "Static credential store for SSH keys - DC1"
   scope_id    = boundary_scope.dc1_dev[0].id
 }
 
-# Create SSH credential using existing SSH key
-resource "boundary_credential_ssh_private_key" "ssh_key" {
+# Create credential store for SSH keys in DC2 development project
+resource "boundary_credential_store_static" "dc2_ssh_keys" {
+  count       = var.dc2_deployed ? 1 : 0
+  name        = "dc2_ssh_credential_store"
+  description = "Static credential store for SSH keys - DC2"
+  scope_id    = boundary_scope.dc2_dev[0].id
+}
+
+# Create SSH credential for DC1 using existing SSH key
+resource "boundary_credential_ssh_private_key" "dc1_ssh_key" {
   count               = var.dc1_deployed ? 1 : 0
-  name                = "hashistack_ssh_key"
-  description         = "SSH private key for accessing HashiStack instances"
-  credential_store_id = boundary_credential_store_static.ssh_keys[0].id
+  name                = "dc1_hashistack_ssh_key"
+  description         = "SSH private key for accessing DC1 HashiStack instances"
+  credential_store_id = boundary_credential_store_static.dc1_ssh_keys[0].id
+  username            = "debian"
+  private_key         = var.ssh_private_key
+}
+
+# Create SSH credential for DC2 using existing SSH key
+resource "boundary_credential_ssh_private_key" "dc2_ssh_key" {
+  count               = var.dc2_deployed ? 1 : 0
+  name                = "dc2_hashistack_ssh_key"
+  description         = "SSH private key for accessing DC2 HashiStack instances"
+  credential_store_id = boundary_credential_store_static.dc2_ssh_keys[0].id
   username            = "debian"
   private_key         = var.ssh_private_key
 }
@@ -339,7 +377,7 @@ resource "boundary_target" "dc1_servers_ssh" {
     boundary_host_set_static.dc1_servers[0].id
   ]
   injected_application_credential_source_ids = [
-    boundary_credential_ssh_private_key.ssh_key[0].id
+    boundary_credential_ssh_private_key.dc1_ssh_key[0].id
   ]
 }
 
@@ -355,7 +393,7 @@ resource "boundary_target" "dc1_clients_ssh" {
     boundary_host_set_static.dc1_clients[0].id
   ]
   injected_application_credential_source_ids = [
-    boundary_credential_ssh_private_key.ssh_key[0].id
+    boundary_credential_ssh_private_key.dc1_ssh_key[0].id
   ]
 }
 
@@ -371,7 +409,7 @@ resource "boundary_target" "dc2_servers_ssh" {
     boundary_host_set_static.dc2_servers[0].id
   ]
   injected_application_credential_source_ids = [
-    boundary_credential_ssh_private_key.ssh_key[0].id
+    boundary_credential_ssh_private_key.dc2_ssh_key[0].id
   ]
 }
 
@@ -387,7 +425,7 @@ resource "boundary_target" "dc2_clients_ssh" {
     boundary_host_set_static.dc2_clients[0].id
   ]
   injected_application_credential_source_ids = [
-    boundary_credential_ssh_private_key.ssh_key[0].id
+    boundary_credential_ssh_private_key.dc2_ssh_key[0].id
   ]
 }
 

@@ -13,9 +13,9 @@ tasks:
     desc: "Build HashiStack images with Packer (REQUIRED FIRST STEP)"
     dir: "packer/gcp"
     cmds:
-      - echo "🔨 Building HashiStack images for new project..."
-      - packer build .
-      - echo "✅ HashiStack images built successfully"
+      - echo "Building HashiStack images for new project..."
+      - packer build -var-file="variables.pkrvars.hcl" .
+      - echo "HashiStack images built successfully"
 
   # === Core Infrastructure Deployment ===
   

@@ -13,8 +13,10 @@ job "grafana" {
     count = 1
 
     network {
+      mode = "bridge"
       port "grafana_ui" {
         static = 3000
+        to = 3000
       }
     }
 
@@ -48,7 +50,6 @@ job "grafana" {
 
       config {
         image = "grafana/grafana:latest"
-        network_mode = "host"
         ports = ["grafana_ui"]
         mount {
           type   = "bind"
