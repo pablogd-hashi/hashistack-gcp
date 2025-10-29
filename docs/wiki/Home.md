@@ -48,13 +48,13 @@ New to this project? Follow these steps:
 
 ## Documentation Structure
 
-### 📚 Getting Started
+### Getting Started
 Start here if you're new to the project.
 - [Prerequisites and Setup](getting-started/Prerequisites-and-Setup.md)
 - [Quick Start Guide](getting-started/Quick-Start-Guide.md)
 - [Architecture Overview](getting-started/Architecture-Overview.md)
 
-### 🏗️ Core Infrastructure
+### Core Infrastructure
 Deploy and manage the foundational infrastructure.
 - [Image Building with Packer](infrastructure/Image-Building-with-Packer.md)
 - [VM Cluster Deployment](infrastructure/VM-Cluster-Deployment.md)
@@ -62,20 +62,20 @@ Deploy and manage the foundational infrastructure.
 - [OpenShift Integration](infrastructure/OpenShift-Integration.md)
 - [Secure Access with Boundary](infrastructure/Secure-Access-with-Boundary.md)
 
-### 🚀 Advanced Features
+### Advanced Features
 Implement enterprise features and multi-tenant architectures.
 - [Admin Partitions](advanced-features/Admin-Partitions.md)
 - [Cluster Peering](advanced-features/Cluster-Peering.md)
 - [Consul-Terraform-Sync](advanced-features/Consul-Terraform-Sync.md)
 - [Service Intentions](advanced-features/Service-Intentions.md)
 
-### 📋 Deployment Workflows
+### Deployment Workflows
 Learn common deployment patterns and workflows.
 - [Deployment Workflows](workflows/Deployment-Workflows.md)
 - [Task Automation Reference](workflows/Task-Automation-Reference.md)
 - [Demo Applications](workflows/Demo-Applications.md)
 
-### 🔧 Operations
+### Operations
 Maintain, monitor, and troubleshoot your deployment.
 - [Monitoring and Observability](operations/Monitoring-and-Observability.md)
 - [Troubleshooting Guide](operations/Troubleshooting-Guide.md)
@@ -91,7 +91,7 @@ task deploy-dc1        # Deploy infrastructure
 task eval-dc1          # Get connection details
 nomad setup consul -y  # Configure integration
 ```
-📖 [Full Guide](workflows/Deployment-Workflows.md#single-datacenter)
+[Full Guide](workflows/Deployment-Workflows.md#single-datacenter)
 
 ### Multi-Datacenter with Peering
 Connect multiple datacenters with secure service mesh communication.
@@ -101,7 +101,7 @@ task deploy-both-dc
 task eval-both
 task -t consul/peering/Taskfile.yml consul:deploy-all
 ```
-📖 [Full Guide](workflows/Deployment-Workflows.md#multi-datacenter-with-peering)
+[Full Guide](workflows/Deployment-Workflows.md#multi-datacenter-with-peering)
 
 ### Admin Partitions on Kubernetes
 Deploy multi-tenant Consul partitions on GKE clusters.
@@ -111,7 +111,7 @@ task deploy-dc1
 task deploy-both-gke
 task -t consul/admin-partitions/Taskfile.yml consul:deploy-all
 ```
-📖 [Full Guide](advanced-features/Admin-Partitions.md)
+[Full Guide](advanced-features/Admin-Partitions.md)
 
 ## Quick Access
 
@@ -125,9 +125,9 @@ Get all URLs with: `task show-dc1-info`
 
 ## Need Help?
 
-- 📖 **Troubleshooting:** See [Troubleshooting Guide](operations/Troubleshooting-Guide.md)
-- 🔍 **Task Reference:** Run `task --list` or see [Task Automation](workflows/Task-Automation-Reference.md)
-- 💡 **Component Docs:** Navigate to specific feature pages above
+- **Troubleshooting:** See [Troubleshooting Guide](operations/Troubleshooting-Guide.md)
+- **Task Reference:** Run `task --list` or see [Task Automation](workflows/Task-Automation-Reference.md)
+- **Component Docs:** Navigate to specific feature pages above
 
 ---
 

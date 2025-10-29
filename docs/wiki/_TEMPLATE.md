@@ -81,9 +81,9 @@ check-command --status
 ```
 
 **Expected results:**
-- ✅ Item 1 should be successful
-- ✅ Item 2 should show expected state
-- ✅ Item 3 should be accessible
+- Item 1 should be successful
+- Item 2 should show expected state
+- Item 3 should be accessible
 
 ## Troubleshooting
 

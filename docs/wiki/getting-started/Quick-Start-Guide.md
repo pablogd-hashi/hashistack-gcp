@@ -138,7 +138,7 @@ NAME                              FAMILY      PROJECT            STATUS
 consul-nomad-1-21-2-ent-1-10-3-ent hashistack your-gcp-project  READY
 ```
 
-📖 **More details:** [Image Building with Packer](../infrastructure/Image-Building-with-Packer.md)
+**More details:** [Image Building with Packer](../infrastructure/Image-Building-with-Packer.md)
 
 ---
 
@@ -349,7 +349,7 @@ task deploy-traefik-dc1
 http://<client-ip>:8080
 ```
 
-📖 **More details:** [Monitoring and Observability](../operations/Monitoring-and-Observability.md)
+**More details:** [Monitoring and Observability](../operations/Monitoring-and-Observability.md)
 
 ---
 
@@ -463,7 +463,7 @@ echo $CONSUL_HTTP_ADDR
 echo $CONSUL_HTTP_TOKEN
 ```
 
-📖 **Full troubleshooting guide:** [Troubleshooting Guide](../operations/Troubleshooting-Guide.md)
+**Full troubleshooting guide:** [Troubleshooting Guide](../operations/Troubleshooting-Guide.md)
 
 ---
 
@@ -487,12 +487,12 @@ terraform destroy
 ## Summary
 
 You've successfully deployed:
-- ✅ Custom VM images with HashiCorp tools
-- ✅ High-availability Consul cluster (3 servers)
-- ✅ Nomad cluster with server and client nodes
-- ✅ Complete ACL security with TLS encryption
-- ✅ Service mesh with Consul Connect
-- ✅ Optional monitoring and ingress
+- Custom VM images with HashiCorp tools
+- High-availability Consul cluster (3 servers)
+- Nomad cluster with server and client nodes
+- Complete ACL security with TLS encryption
+- Service mesh with Consul Connect
+- Optional monitoring and ingress
 
 ## Related Pages
 

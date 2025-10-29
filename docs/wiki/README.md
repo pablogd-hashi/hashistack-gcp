@@ -2,7 +2,7 @@
 
 This directory contains wiki-style documentation for the HashiStack GCP deployment project.
 
-## 📚 Documentation Structure
+## Documentation Structure
 
 The documentation is organized into logical categories for easy navigation:
 
@@ -35,7 +35,7 @@ The documentation is organized into logical categories for easy navigation:
 - [Troubleshooting Guide](operations/Troubleshooting-Guide.md) - *Coming soon*
 - [Maintenance and Cleanup](operations/Maintenance-and-Cleanup.md) - *Coming soon*
 
-## 🚀 Quick Start
+## Quick Start
 
 New to this project? Start here:
 
@@ -43,28 +43,28 @@ New to this project? Start here:
 2. **[Prerequisites](getting-started/Prerequisites-and-Setup.md)** - Setup your environment
 3. **[Quick Start](getting-started/Quick-Start-Guide.md)** - Deploy in 5 steps
 
-## 📖 Migration Status
+## Migration Status
 
 This wiki is currently under development, migrating content from existing README files.
 
 ### Completed Pages
-- ✅ Home
-- ✅ Prerequisites and Setup
-- ✅ Quick Start Guide
+- Home
+- Prerequisites and Setup
+- Quick Start Guide
 
 ### In Progress
-- 🚧 Architecture Overview
-- 🚧 Image Building with Packer
-- 🚧 VM Cluster Deployment
-- 🚧 Admin Partitions
+- Architecture Overview
+- Image Building with Packer
+- VM Cluster Deployment
+- Admin Partitions
 
 ### Planned
-- ⏳ All remaining infrastructure pages
-- ⏳ Advanced features documentation
-- ⏳ Workflow guides
-- ⏳ Operations documentation
+- All remaining infrastructure pages
+- Advanced features documentation
+- Workflow guides
+- Operations documentation
 
-## 🔗 Original Documentation
+## Original Documentation
 
 Until migration is complete, original README files remain available:
 
@@ -74,7 +74,7 @@ Until migration is complete, original README files remain available:
 - [Admin Partitions README](../../../consul/admin-partitions/README.md)
 - [Cluster Peering README](../../../consul/peering/README.md)
 
-## 📝 Contributing
+## Contributing
 
 When adding or updating documentation:
 
@@ -85,7 +85,7 @@ When adding or updating documentation:
 5. Include code examples with proper syntax highlighting
 6. Add "Previous | Next" navigation at the bottom
 
-## 🎯 Page Template
+## Page Template
 
 ```markdown
 # Page Title
@@ -114,7 +114,7 @@ Brief introduction...
 **Previous:** [Page Name](Previous-Page.md) | **Next:** [Page Name](Next-Page.md) | **[Back to Top](#page-title)**
 ```
 
-## ❓ Questions or Issues?
+## Questions or Issues?
 
 - Check the [Troubleshooting Guide](operations/Troubleshooting-Guide.md) (when available)
 - Review original READMEs in the project root

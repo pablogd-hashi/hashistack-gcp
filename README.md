@@ -2,7 +2,7 @@
 
 Deploy a complete HashiCorp Consul Enterprise and Nomad Enterprise ecosystem on GCP for demos and proof-of-concepts.
 
-> **📚 New!** [Comprehensive Wiki Documentation](docs/wiki/Home.md) - Organized, searchable, and easy to navigate!
+> **New:** [Comprehensive Wiki Documentation](docs/wiki/Home.md) - Organized, searchable, and easy to navigate!
 
 ## Why This Repository?
 
