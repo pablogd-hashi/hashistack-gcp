@@ -8,7 +8,11 @@
 
 ## Overview
 
-This page covers everything you need to install and configure before deploying the HashiStack infrastructure on Google Cloud Platform. This guide assumes you'll use **HCP Terraform** (recommended) for state management and variable storage, with local `tfvars` as an alternative option.
+This page covers everything you need to install and configure before deploying the HashiStack infrastructure on Google Cloud Platform.
+
+**Repository Focus:** This repository is focused on **Consul Enterprise** and **Nomad Enterprise** deployments, with other HashiCorp products (Vault, Boundary, Packer, Terraform) playing supporting roles in the deployment workflow and infrastructure automation.
+
+This guide assumes you'll use **HCP Terraform** (recommended) for state management and variable storage, with local `tfvars` as an alternative option.
 
 ## Required Tools
 
@@ -41,7 +45,9 @@ nomad version
 
 ### 1. Create GCP Project
 
-If you don't have a GCP project:
+**For HashiCorp employees:** Request a GCP project via [Doormat](https://doormat.hashicorp.services/). Doormat provides pre-configured projects with appropriate billing and permissions.
+
+**For external users:** Create a GCP project manually:
 
 ```bash
 # Create new project
@@ -70,9 +76,9 @@ gcloud services enable container.googleapis.com
 gcloud services enable iam.googleapis.com
 ```
 
-### 3. Create Service Account for Terraform
+### 3. Create Service Account and Generate Key (JSON)
 
-Create a dedicated service account with necessary permissions:
+Create a service account for Terraform to use when deploying infrastructure:
 
 ```bash
 # Create service account
@@ -80,31 +86,7 @@ gcloud iam service-accounts create terraform-deployer \
   --display-name="Terraform Deployment Service Account" \
   --description="Service account for HashiStack Terraform deployments"
 
-# Grant required roles
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:terraform-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/compute.admin"
-
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:terraform-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
-
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:terraform-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/container.admin"
-
-# Optional: DNS admin role (if using custom domains)
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-  --member="serviceAccount:terraform-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/dns.admin"
-```
-
-### 4. Generate Service Account Key (JSON)
-
-**This JSON file will be used as `GOOGLE_CREDENTIALS` in HCP Terraform:**
-
-```bash
-# Generate and download service account key
+# Generate and download service account key JSON
 gcloud iam service-accounts keys create ~/terraform-deployer-key.json \
   --iam-account=terraform-deployer@YOUR_PROJECT_ID.iam.gserviceaccount.com
 
@@ -112,7 +94,9 @@ gcloud iam service-accounts keys create ~/terraform-deployer-key.json \
 cat ~/terraform-deployer-key.json
 ```
 
-**Important:** Keep this JSON file secure. You'll add its entire contents to HCP Terraform as the `GOOGLE_CREDENTIALS` variable.
+**This JSON file will be used as `GOOGLE_CREDENTIALS` in HCP Terraform.**
+
+**Important:** Keep this JSON file secure. You'll add its entire contents to HCP Terraform as the `GOOGLE_CREDENTIALS` environment variable. The service account will automatically receive necessary permissions when you run Terraform (the Terraform configurations grant the service account appropriate roles during deployment).
 
 ---
 
