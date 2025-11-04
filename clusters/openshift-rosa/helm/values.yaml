@@ -1,0 +1,239 @@
+# Consul Helm Values for OpenShift ROSA Cluster
+# Admin Partition: openshift-rosa
+# This connects to DC1/DC2 HashiStack cluster as an admin partition client
+
+global:
+  enabled: true
+  name: consul
+  datacenter: gcp-dc1
+  image: hashicorp/consul-enterprise:1.21.5-ent-ubi
+  # imageK8S: hashicorp/consul-k8s-control-plane:1.6.2
+  logLevel: info
+
+  # Admin Partitions Configuration - OpenShift ROSA Partition
+  adminPartitions:
+    enabled: true
+    name: "openshift-rosa"  # OpenShift ROSA partition
+
+  # Enterprise License (you'll need to create this secret)
+  enterpriseLicense:
+    secretName: consul-ent-license
+    secretKey: key
+
+  # TLS Configuration
+  tls:
+    enabled: true
+    enableAutoEncrypt: true
+    verify: false  # Set to false for testing, true for production
+    caCert:
+      secretName: consul-ca-cert
+      secretKey: tls.crt
+    caKey:
+      secretName: consul-ca-key
+      secretKey: tls.key
+
+  # ACL Configuration
+  acls:
+    manageSystemACLs: true
+    bootstrapToken:
+      secretName: consul-bootstrap-token
+      secretKey: token
+
+  # Consul Namespaces (Enterprise feature)
+  enableConsulNamespaces: true
+
+  # Peering Configuration (requires TLS)
+  peering:
+    enabled: true
+
+  # Metrics
+  metrics:
+    enableTelemetryCollector: false
+    enabled: true
+    enableAgentMetrics: true
+    enableGatewayMetrics: true
+    agentMetricsRetentionTime: "12h"
+
+  # OpenShift Specific Configuration
+  openshift:
+    enabled: true
+
+  # Image Pull Secrets (if needed for OpenShift)
+  imagePullSecrets:
+    - name: 18338488-openshift-secret-pull-secret
+
+  # Resource limits
+  resources:
+    requests:
+      memory: "50Mi"
+      cpu: "50m"
+    limits:
+      memory: "50Mi"
+      cpu: "50m"
+
+# External Servers Configuration (your DC1/DC2 cluster)
+# Updated with actual server IPs from GCP
+externalServers:
+  enabled: true
+  hosts:
+    # DC1 Server External IPs - Verified and updated
+    - "34.88.172.144"  # hashi-server-0-181
+    - "34.88.43.17"    # hashi-server-1-181
+    - "34.88.45.49"    # hashi-server-2-181
+  httpsPort: 8501
+  grpcPort: 8502
+  tlsServerName: server.gcp-dc1.consul
+  # Get this from: oc whoami --show-server
+  k8sAuthMethodHost: https://api.pgddbseuwest.q2o2.p1.openshiftapps.com:6443
+  # Skip server watch to prevent switching to internal IPs
+  skipServerWatch: true
+
+# Server Configuration (disabled since we're connecting to external)
+server:
+  enabled: false
+
+# Client Configuration (disabled for dataplane mode)
+client:
+  enabled: false
+  grpc: true
+
+# DNS Configuration
+dns:
+  enabled: true
+  enableRedirection: true
+
+# UI Configuration
+ui:
+  enabled: true
+  metrics:
+    enabled: true
+    provider: "prometheus"
+
+# Connect Inject Configuration
+connectInject:
+  enabled: true
+  replicas: 1
+
+  # Transparent Proxy
+  transparentProxy:
+    defaultEnabled: true
+
+  # CNI Configuration for OpenShift
+  cni:
+    enabled: true
+    namespace: "consul"
+    cniBinDir: "/var/lib/cni/bin"
+    cniNetDir: "/etc/kubernetes/cni/net.d"
+    multus: true
+
+  # Namespace mirroring
+  consulNamespaces:
+    mirroringK8S: true
+
+  # Namespace selection - only inject into labeled namespaces
+  namespaceSelector: |
+    matchExpressions:
+      - key: bofa.com/esm
+        operator: In
+        values:
+          - enabled
+
+  # Denied namespaces
+  k8sDenyNamespaces:
+    - default
+    - kube-system
+    - kube-public
+    - kube-node-lease
+
+  # Sidecar proxy resources
+  sidecarProxy:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 128Mi
+        cpu: 100m
+
+  # Init container resources
+  initContainer:
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "150Mi"
+        cpu: "100m"
+
+  # Metrics configuration
+  metrics:
+    defaultEnabled: true
+    defaultEnableMerging: true
+    defaultMergedMetricsPort: '20100'
+    defaultPrometheusScrapePort: '20200'
+    defaultPrometheusScrapePath: '/metrics'
+
+  # Resources for connect inject
+  resources:
+    requests:
+      memory: "300Mi"
+      cpu: "250m"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+
+  # Failure policy
+  failurePolicy: "Ignore"
+
+  # API Gateway configuration
+  apiGateway:
+    manageExternalCRDs: true
+    managedGatewayClass:
+      resources:
+        requests:
+          memory: "500Mi"
+          cpu: "100m"
+        limits:
+          memory: "1000Mi"
+          cpu: "500m"
+      serviceType: "ClusterIP"
+
+# Controller
+controller:
+  enabled: true
+
+# Mesh Gateway Configuration
+meshGateway:
+  enabled: true
+  replicas: 1
+  service:
+    type: NodePort
+    nodePort: 31443
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  annotations: {}
+
+# Ingress Gateways
+ingressGateways:
+  enabled: false
+
+# Terminating Gateways
+terminatingGateways:
+  enabled: true
+  logLevel: "info"
+  defaults:
+    replicas: 1
+    annotations: {}
+    consulNamespace: "consul"
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"

@@ -1,0 +1,17 @@
+# Certificates - Never commit to git
+certificates/
+*.pem
+*.key
+*.crt
+
+# Tokens - Never commit to git
+*.token
+*-token.txt
+
+# Backup files
+*.backup.*
+*.tmp
+
+# OpenShift pull secrets
+*-pull-secret.yaml
+pull-secret.txt
